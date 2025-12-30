@@ -44,6 +44,9 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
         height: `${baseHeight * scale}px`,
       }}
     >
+      {/* Base fallback background */}
+      <div className="absolute inset-0 bg-black" />
+
       {/* Background Media */}
       {data.backgroundType === "video" ? (
         <video
@@ -55,12 +58,15 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
           className="absolute inset-0 w-full h-full object-cover"
           id="bg-video"
         />
-      ) : (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${data.backgroundUrl})` }}
+      ) : data.backgroundUrl ? (
+        <img
+          src={data.backgroundUrl}
+          alt="PnL card background"
+          crossOrigin="anonymous"
+          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
         />
-      )}
+      ) : null}
 
       {/* Dark overlay for left side - conditionally shown */}
       {data.showGradientOverlay && (
@@ -110,63 +116,73 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
 
           {/* PNL Value */}
           <div style={{ marginBottom: `${24 * scale}px` }}>
-            <div
-              className="relative overflow-hidden"
-              style={{
-                minWidth: `${230 * scale}px`,
-                width: "fit-content",
-                height: `${55 * scale}px`,
-                borderRadius: 0,
-                backgroundColor: pnlBgColor,
-              }}
-            >
-              {data.transparentPnlText ? (
-                // "Cut-out" text: PNL bg stays, digits are holes revealing the card background
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox={`0 0 ${Math.max(230, 230) * scale} ${55 * scale}`}
-                  preserveAspectRatio="none"
-                  style={{ position: "absolute", inset: 0 }}
-                >
-                  <defs>
-                    <mask id="pnlMask">
-                      {/* White = visible, Black = transparent */}
-                      <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                      <text
-                        x={`${10 * scale}`}
-                        y="50%"
-                        dominantBaseline="middle"
-                        textAnchor="start"
-                        fill="black"
-                        style={{
-                          fontSize: `${43 * scale}px`,
-                          fontFamily: "inherit",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {data.pnlValue}
-                      </text>
-                    </mask>
-                  </defs>
+            {(() => {
+              const h = 55 * scale;
+              const fontSize = 43 * scale;
+              const px = 10 * scale;
+              const textWidth = fontSize * 0.62 * data.pnlValue.length;
+              const w = Math.max(230 * scale, textWidth + px * 2);
 
-                  <rect x="0" y="0" width="100%" height="100%" fill={pnlBgColor} mask="url(#pnlMask)" />
-                </svg>
-              ) : (
+              return (
                 <div
-                  className="flex h-full items-center"
+                  className="relative overflow-hidden"
                   style={{
-                    fontSize: `${43 * scale}px`,
-                    paddingLeft: `${10 * scale}px`,
-                    paddingRight: `${10 * scale}px`,
-                    color: "rgb(26,27,31)",
-                    whiteSpace: "nowrap",
+                    width: `${w}px`,
+                    height: `${h}px`,
+                    borderRadius: 0,
+                    backgroundColor: pnlBgColor,
                   }}
                 >
-                  {data.pnlValue}
+                  {data.transparentPnlText ? (
+                    // "Cut-out" text: PNL bg stays, digits are holes revealing the card background
+                    <svg
+                      width={w}
+                      height={h}
+                      viewBox={`0 0 ${w} ${h}`}
+                      preserveAspectRatio="none"
+                      style={{ position: "absolute", inset: 0 }}
+                    >
+                      <defs>
+                        <mask id="pnlMask" maskUnits="userSpaceOnUse">
+                          {/* White = visible, Black = transparent */}
+                          <rect x="0" y="0" width={w} height={h} fill="white" />
+                          <text
+                            x={px}
+                            y={h / 2}
+                            dominantBaseline="middle"
+                            textAnchor="start"
+                            fill="black"
+                            style={{
+                              fontSize,
+                              fontFamily: "inherit",
+                              fontWeight: 700,
+                              whiteSpace: "pre",
+                            }}
+                          >
+                            {data.pnlValue}
+                          </text>
+                        </mask>
+                      </defs>
+
+                      <rect x="0" y="0" width={w} height={h} fill={pnlBgColor} mask="url(#pnlMask)" />
+                    </svg>
+                  ) : (
+                    <div
+                      className="flex h-full items-center"
+                      style={{
+                        fontSize,
+                        paddingLeft: px,
+                        paddingRight: px,
+                        color: "rgb(26,27,31)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {data.pnlValue}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
 
           {/* TXs Stats */}
@@ -201,9 +217,11 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
             >
               <img
                 src={data.avatarUrl}
-                alt="Avatar"
+                alt="User avatar"
+                crossOrigin="anonymous"
                 className="rounded-full object-cover"
                 style={{ width: `${24 * scale}px`, height: `${24 * scale}px` }}
+                draggable={false}
               />
               <span
                 className="font-semibold"
