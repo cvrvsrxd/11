@@ -29,6 +29,7 @@ interface GmgnCardProps {
 
 const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 }, ref) => {
   const isNegative = data.pnlValue.startsWith("-");
+  const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
 
   // Base dimensions for preview (750x420)
   const baseWidth = 750;
@@ -52,6 +53,7 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
+          id="bg-video"
         />
       ) : (
         <div
@@ -106,35 +108,49 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
           {/* Profit Type */}
           <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>{data.profitType}</p>
 
-          {/* PNL Value - NO border-radius, text aligned left with padding */}
+          {/* PNL Value - knockout text effect when transparent */}
           <div style={{ marginBottom: `${24 * scale}px` }}>
             <div
-              className={`flex items-center font-bold ${
-                isNegative ? "bg-[rgb(242,102,130)]" : "bg-[rgb(134,217,159)]"
-              }`}
+              className="relative flex items-center font-bold overflow-hidden"
               style={{
                 minWidth: `${230 * scale}px`,
                 width: 'fit-content',
                 height: `${55 * scale}px`,
-                fontSize: `${43 * scale}px`,
-                paddingLeft: `${10 * scale}px`,
-                paddingRight: `${10 * scale}px`,
                 borderRadius: 0,
-                color: data.transparentPnlText ? "transparent" : "rgb(26,27,31)",
-                textAlign: "left",
-                justifyContent: "flex-start",
-                // For transparent text effect - shows background through text
-                ...(data.transparentPnlText && {
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundImage: `url(${data.backgroundUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }),
+                backgroundColor: pnlBgColor,
               }}
             >
-              {data.pnlValue}
+              {/* Knockout text - background shows through */}
+              {data.transparentPnlText ? (
+                <div
+                  className="absolute inset-0 flex items-center font-bold"
+                  style={{
+                    fontSize: `${43 * scale}px`,
+                    paddingLeft: `${10 * scale}px`,
+                    paddingRight: `${10 * scale}px`,
+                    backgroundImage: `url(${data.backgroundUrl})`,
+                    backgroundSize: `${baseWidth * scale}px ${baseHeight * scale}px`,
+                    backgroundPosition: `-${68 * scale}px -${(baseHeight * scale * 0.45)}px`,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    color: 'transparent',
+                  }}
+                >
+                  {data.pnlValue}
+                </div>
+              ) : (
+                <span
+                  style={{
+                    fontSize: `${43 * scale}px`,
+                    paddingLeft: `${10 * scale}px`,
+                    paddingRight: `${10 * scale}px`,
+                    color: "rgb(26,27,31)",
+                  }}
+                >
+                  {data.pnlValue}
+                </span>
+              )}
             </div>
           </div>
 
