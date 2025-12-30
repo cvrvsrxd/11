@@ -154,7 +154,7 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
                             fill="black"
                             style={{
                               fontSize,
-                              fontFamily: "inherit",
+                              fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                               fontWeight: 700,
                               whiteSpace: "pre",
                             }}
@@ -171,9 +171,11 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
                       className="flex h-full items-center"
                       style={{
                         fontSize,
+                        fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        fontWeight: 700,
                         paddingLeft: px,
                         paddingRight: px,
-                        color: "rgb(26,27,31)",
+                        color: "rgb(0,0,0)",
                         whiteSpace: "nowrap",
                       }}
                     >
