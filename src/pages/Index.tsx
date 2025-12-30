@@ -130,15 +130,32 @@ const Index = () => {
 
     setIsRecording(true);
 
-    const prevLoop = video.loop;
-    const hadLoopAttr = video.hasAttribute("loop");
     try {
-      // We need 'ended' to fire to stop recording => temporarily disable loop
-      video.loop = false;
-      if (hadLoopAttr) video.removeAttribute("loop");
+      // Use a cloned/hidden video element for export so we can capture audio (the UI video is muted for autoplay)
+      const exportVideo = document.createElement("video");
+      exportVideo.src = video.currentSrc || cardData.backgroundUrl;
+      exportVideo.muted = false;
+      exportVideo.playsInline = true;
+      exportVideo.preload = "auto";
+      exportVideo.crossOrigin = "anonymous";
+      exportVideo.style.position = "fixed";
+      exportVideo.style.left = "-9999px";
+      exportVideo.style.top = "-9999px";
+      exportVideo.style.width = "1px";
+      exportVideo.style.height = "1px";
+      document.body.appendChild(exportVideo);
+
+      const cleanupExportVideo = () => {
+        try {
+          exportVideo.pause();
+        } catch {
+          // ignore
+        }
+        exportVideo.remove();
+      };
 
       // Ensure metadata loaded for duration
-      if (video.readyState < 1) {
+      if (exportVideo.readyState < 1) {
         await new Promise<void>((resolve, reject) => {
           const onLoaded = () => {
             cleanup();
@@ -149,22 +166,22 @@ const Index = () => {
             reject(new Error("Could not load video metadata"));
           };
           const cleanup = () => {
-            video.removeEventListener("loadedmetadata", onLoaded);
-            video.removeEventListener("error", onError);
+            exportVideo.removeEventListener("loadedmetadata", onLoaded);
+            exportVideo.removeEventListener("error", onError);
           };
-          video.addEventListener("loadedmetadata", onLoaded);
-          video.addEventListener("error", onError);
+          exportVideo.addEventListener("loadedmetadata", onLoaded);
+          exportVideo.addEventListener("error", onError);
         });
       }
 
-      if (!Number.isFinite(video.duration) || video.duration <= 0) {
+      if (!Number.isFinite(exportVideo.duration) || exportVideo.duration <= 0) {
         toast.error("Cannot export: video duration unknown");
+        cleanupExportVideo();
         setIsRecording(false);
-        video.loop = prevLoop;
         return;
       }
 
-      // Capture overlay once (everything except bg-video, and skip unsafe images)
+      // Capture overlay once (everything except bg-video, skip unsafe images, and skip export-ignored nodes)
       const exportScale = 1280 / 750;
       const overlayDataUrl = await toPng(card, {
         width: 1280,
@@ -176,6 +193,11 @@ const Index = () => {
           transformOrigin: "top left",
         },
         filter: (node) => {
+          if (node instanceof HTMLElement) {
+            if (node.id === "export-fallback-bg") return false;
+            if (node.dataset.exportIgnore === "true") return false;
+            if (node.getAttribute("data-export-ignore") === "true") return false;
+          }
           if (node instanceof HTMLVideoElement) return false;
           if (node instanceof HTMLImageElement) {
             const src = node.getAttribute("src") || "";
@@ -199,31 +221,47 @@ const Index = () => {
       if (!ctx) throw new Error("Could not get canvas context");
 
       const canvasStream = canvas.captureStream(30);
-
-      // Add audio track from video if available
       const combinedStream = new MediaStream();
       canvasStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
-      
-      // Capture audio from video element
+
+      // Add audio track (best-effort). Many browsers only allow this for same-origin/data: videos.
+      let audioAdded = false;
+
+      // 1) Prefer WebAudio -> MediaStreamDestination (works even when captureStream audio is missing)
       try {
-        const audioCtx = new AudioContext();
-        const source = audioCtx.createMediaElementSource(video);
+        const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+        const audioCtx = new AudioCtx();
+        await audioCtx.resume();
+        const source = audioCtx.createMediaElementSource(exportVideo);
         const dest = audioCtx.createMediaStreamDestination();
         source.connect(dest);
-        source.connect(audioCtx.destination); // So user can still hear it
-        dest.stream.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
-      } catch (audioErr) {
-        console.warn("Could not capture audio:", audioErr);
+        dest.stream.getAudioTracks().forEach((t) => {
+          combinedStream.addTrack(t);
+          audioAdded = true;
+        });
+      } catch (e) {
+        console.warn("WebAudio capture failed:", e);
       }
+
+      // 2) Fallback: element.captureStream (if available)
+      if (!audioAdded) {
+        const exportVideoStream: MediaStream | undefined =
+          (exportVideo as any).captureStream?.() || (exportVideo as any).mozCaptureStream?.();
+        exportVideoStream?.getAudioTracks().forEach((t: MediaStreamTrack) => {
+          combinedStream.addTrack(t);
+          audioAdded = true;
+        });
+      }
+
+      if (!audioAdded) toast.warning("Аудио не удалось захватить (ограничение браузера/видео)");
 
       const preferredTypes = [
         "video/webm;codecs=vp9,opus",
         "video/webm;codecs=vp8,opus",
         "video/webm",
-        "video/mp4",
       ];
       const mimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
-      const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+      const ext = "webm";
 
       const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType,
@@ -235,11 +273,16 @@ const Index = () => {
         if (e.data.size > 0) chunks.push(e.data);
       };
 
+      let stopTimer = 0;
+
+      const onEnded = () => {
+        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      };
+
       const cleanupAll = () => {
-        video.removeEventListener("ended", onEnded);
+        exportVideo.removeEventListener("ended", onEnded);
         clearTimeout(stopTimer);
-        video.loop = prevLoop;
-        if (hadLoopAttr) video.setAttribute("loop", "");
+        cleanupExportVideo();
         setRecordProgress(null);
         setIsRecording(false);
       };
@@ -261,51 +304,41 @@ const Index = () => {
 
       mediaRecorder.onstop = finalize;
 
-      const onEnded = () => {
-        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      };
-
       toast.info("Exporting full card video… this takes as long as the BG video");
 
-      // Start from beginning
-      video.pause();
-      video.currentTime = 0;
-      video.addEventListener("ended", onEnded);
+      exportVideo.currentTime = 0;
+      exportVideo.addEventListener("ended", onEnded);
 
       // Safety stop
-      const stopTimer = window.setTimeout(() => {
+      stopTimer = window.setTimeout(() => {
         if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      }, Math.ceil(video.duration * 1000) + 250);
+      }, Math.ceil(exportVideo.duration * 1000) + 500);
 
       mediaRecorder.start();
-      await video.play();
+      await exportVideo.play();
 
       const draw = () => {
         try {
-          // Clear canvas first (avoid black frame artifacts)
           ctx.clearRect(0, 0, 1280, 720);
-          // Draw video background
-          ctx.drawImage(video, 0, 0, 1280, 720);
-          // Draw overlay on top (transparent PNG with card content)
+          ctx.drawImage(exportVideo, 0, 0, 1280, 720);
           ctx.drawImage(overlayImg, 0, 0, 1280, 720);
-          if (Number.isFinite(video.duration) && video.duration > 0) {
-            setRecordProgress(Math.min(1, Math.max(0, video.currentTime / video.duration)));
+          if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
+            setRecordProgress(Math.min(1, Math.max(0, exportVideo.currentTime / exportVideo.duration)));
           }
         } catch (e) {
           console.error("Canvas draw error:", e);
-          toast.error("Export failed due to CORS. Upload images/videos instead of hotlinking.");
+          toast.error("Export failed (likely CORS or browser limitation)");
           if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
           return;
         }
 
-        if (!video.ended && !video.paused) requestAnimationFrame(draw);
+        if (!exportVideo.ended && !exportVideo.paused) requestAnimationFrame(draw);
       };
       draw();
     } catch (error) {
       console.error("Error exporting video:", error);
       toast.error("Failed to export video");
       setIsRecording(false);
-      video.loop = prevLoop;
     }
   }, [cardData.backgroundType, cardData.backgroundUrl]);
 
