@@ -198,19 +198,34 @@ const Index = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Could not get canvas context");
 
-      const stream = canvas.captureStream(30);
+      const canvasStream = canvas.captureStream(30);
+
+      // Add audio track from video if available
+      const combinedStream = new MediaStream();
+      canvasStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
+      
+      // Capture audio from video element
+      try {
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(video);
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(dest);
+        source.connect(audioCtx.destination); // So user can still hear it
+        dest.stream.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
+      } catch (audioErr) {
+        console.warn("Could not capture audio:", audioErr);
+      }
 
       const preferredTypes = [
-        "video/mp4;codecs=avc1.42E01E",
-        "video/mp4",
-        "video/webm;codecs=vp9",
-        "video/webm;codecs=vp8",
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
         "video/webm",
+        "video/mp4",
       ];
       const mimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
       const ext = mimeType.includes("mp4") ? "mp4" : "webm";
 
-      const mediaRecorder = new MediaRecorder(stream, {
+      const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType,
         videoBitsPerSecond: 6_000_000,
       });
@@ -267,7 +282,11 @@ const Index = () => {
 
       const draw = () => {
         try {
+          // Clear canvas first (avoid black frame artifacts)
+          ctx.clearRect(0, 0, 1280, 720);
+          // Draw video background
           ctx.drawImage(video, 0, 0, 1280, 720);
+          // Draw overlay on top (transparent PNG with card content)
           ctx.drawImage(overlayImg, 0, 0, 1280, 720);
           if (Number.isFinite(video.duration) && video.duration > 0) {
             setRecordProgress(Math.min(1, Math.max(0, video.currentTime / video.duration)));
