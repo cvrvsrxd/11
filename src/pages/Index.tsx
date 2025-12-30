@@ -131,40 +131,26 @@ const Index = () => {
     setIsRecording(true);
 
     try {
-      // Use a cloned/hidden video element for export so we can capture audio (the UI video is muted for autoplay)
+      // Create export video element (unmuted for audio capture)
       const exportVideo = document.createElement("video");
       exportVideo.src = video.currentSrc || cardData.backgroundUrl;
       exportVideo.muted = false;
       exportVideo.playsInline = true;
       exportVideo.preload = "auto";
       exportVideo.crossOrigin = "anonymous";
-      exportVideo.style.position = "fixed";
-      exportVideo.style.left = "-9999px";
-      exportVideo.style.top = "-9999px";
-      exportVideo.style.width = "1px";
-      exportVideo.style.height = "1px";
+      exportVideo.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;";
       document.body.appendChild(exportVideo);
 
       const cleanupExportVideo = () => {
-        try {
-          exportVideo.pause();
-        } catch {
-          // ignore
-        }
+        try { exportVideo.pause(); } catch {}
         exportVideo.remove();
       };
 
-      // Ensure metadata loaded for duration
+      // Wait for metadata
       if (exportVideo.readyState < 1) {
         await new Promise<void>((resolve, reject) => {
-          const onLoaded = () => {
-            cleanup();
-            resolve();
-          };
-          const onError = () => {
-            cleanup();
-            reject(new Error("Could not load video metadata"));
-          };
+          const onLoaded = () => { cleanup(); resolve(); };
+          const onError = () => { cleanup(); reject(new Error("Could not load video metadata")); };
           const cleanup = () => {
             exportVideo.removeEventListener("loadedmetadata", onLoaded);
             exportVideo.removeEventListener("error", onError);
@@ -181,53 +167,199 @@ const Index = () => {
         return;
       }
 
-      // Capture overlay once (everything except bg-video, skip unsafe images, and skip export-ignored nodes)
-      const exportScale = 1280 / 750;
-      const overlayDataUrl = await toPng(card, {
-        width: 1280,
-        height: 720,
-        pixelRatio: exportScale,
-        backgroundColor: "transparent",
-        style: {
-          transform: `scale(${exportScale})`,
-          transformOrigin: "top left",
-        },
-        filter: (node) => {
-          if (node instanceof HTMLElement) {
-            if (node.id === "export-fallback-bg") return false;
-            if (node.dataset.exportIgnore === "true") return false;
-            if (node.getAttribute("data-export-ignore") === "true") return false;
-          }
-          if (node instanceof HTMLVideoElement) return false;
-          if (node instanceof HTMLImageElement) {
-            const src = node.getAttribute("src") || "";
-            return isSafeCanvasUrl(src);
-          }
-          return true;
-        },
-      });
+      // Preload avatar image
+      let avatarImg: HTMLImageElement | null = null;
+      if (cardData.showUserProfile && cardData.avatarUrl) {
+        avatarImg = await new Promise<HTMLImageElement>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null as any);
+          img.src = cardData.avatarUrl;
+        });
+      }
 
-      const overlayImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Failed to load overlay image"));
-        img.src = overlayDataUrl;
-      });
-
+      // Create canvas - all rendering happens here
       const canvas = document.createElement("canvas");
       canvas.width = 1280;
       canvas.height = 720;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { alpha: false })!;
       if (!ctx) throw new Error("Could not get canvas context");
 
+      // Scale factor for 1280x720 from base 750x420
+      const scale = 1280 / 750;
+
+      // Draw function - renders everything directly on canvas
+      const drawFrame = () => {
+        // 1. Video frame
+        ctx.drawImage(exportVideo, 0, 0, 1280, 720);
+
+        // 2. Gradient overlay (if enabled)
+        if (cardData.showGradientOverlay) {
+          const grad = ctx.createLinearGradient(0, 0, 1280, 0);
+          grad.addColorStop(0, "rgba(0,0,0,0.9)");
+          grad.addColorStop(0.45, "rgba(0,0,0,0.75)");
+          grad.addColorStop(0.75, "rgba(0,0,0,0)");
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 1280, 720);
+        }
+
+        // 3. Text and UI elements
+        ctx.fillStyle = "#ffffff";
+        ctx.textBaseline = "top";
+
+        // Header divider
+        const headerY = 20 * scale;
+        const sideMargin = 68 * scale;
+        const dividerY = headerY + 36 * scale + 20 * scale;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillRect(sideMargin, dividerY, 1280 - sideMargin * 2, 1 * scale);
+
+        // Date Range
+        const contentY = dividerY + 24 * scale;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${28 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.fillText(cardData.dateRange, sideMargin, contentY);
+
+        // Profit Type
+        ctx.fillText(cardData.profitType, sideMargin, contentY + 36 * scale);
+
+        // PNL Block
+        const isNegative = cardData.pnlValue.startsWith("-");
+        const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
+        const pnlY = contentY + 80 * scale;
+        const pnlH = 55 * scale;
+        const pnlFontSize = 43 * scale;
+        const pnlPx = 10 * scale;
+        
+        ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        const textMetrics = ctx.measureText(cardData.pnlValue);
+        const pnlW = Math.max(230 * scale, textMetrics.width + pnlPx * 2);
+
+        if (cardData.transparentPnlText) {
+          // Knockout effect - draw bg with text hole (simplified: just colored bg, text transparent)
+          ctx.fillStyle = pnlBgColor;
+          ctx.fillRect(sideMargin, pnlY, pnlW, pnlH);
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.fillStyle = "#000";
+          ctx.textBaseline = "middle";
+          ctx.fillText(cardData.pnlValue, sideMargin + pnlPx, pnlY + pnlH / 2);
+          ctx.globalCompositeOperation = "source-over";
+        } else {
+          ctx.fillStyle = pnlBgColor;
+          ctx.fillRect(sideMargin, pnlY, pnlW, pnlH);
+          ctx.fillStyle = "#000000";
+          ctx.textBaseline = "middle";
+          ctx.fillText(cardData.pnlValue, sideMargin + pnlPx, pnlY + pnlH / 2);
+        }
+
+        // TXs
+        ctx.textBaseline = "top";
+        const txY = pnlY + pnlH + 24 * scale;
+        ctx.font = `bold ${20 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("TXs", sideMargin, txY);
+        
+        const txLabelWidth = 60 * scale + 12 * scale;
+        ctx.fillStyle = "rgb(134,217,159)";
+        ctx.fillText(cardData.txWin, sideMargin + txLabelWidth, txY);
+        
+        const winWidth = ctx.measureText(cardData.txWin).width;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("/", sideMargin + txLabelWidth + winWidth, txY);
+        
+        const slashWidth = ctx.measureText("/").width;
+        ctx.fillStyle = "rgb(242,102,130)";
+        ctx.fillText(cardData.txLoss, sideMargin + txLabelWidth + winWidth + slashWidth, txY);
+
+        // Header icons and text (simplified - text only)
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `normal ${16 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textBaseline = "middle";
+        const headerTextY = headerY + 18 * scale;
+        
+        // Twitter handle (right side)
+        const twitterText = cardData.twitterHandle;
+        const websiteText = cardData.websiteUrl;
+        const websiteWidth = ctx.measureText(websiteText).width;
+        const twitterWidth = ctx.measureText(twitterText).width;
+        const gap = 60 * scale;
+        
+        ctx.fillText(websiteText, 1280 - sideMargin - websiteWidth, headerTextY);
+        ctx.fillText(twitterText, 1280 - sideMargin - websiteWidth - gap - twitterWidth, headerTextY);
+
+        // Footer - User profile and invite code
+        const footerRight = 1280 - sideMargin;
+        const footerBottom = 720 - 28 * scale;
+
+        // Invite code
+        ctx.font = `normal ${14 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textBaseline = "bottom";
+        const inviteCodeWidth = ctx.measureText(cardData.inviteCode).width;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(cardData.inviteCode, footerRight - inviteCodeWidth, footerBottom);
+        
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        const inviteLabelWidth = ctx.measureText("Invite Code").width;
+        ctx.fillText("Invite Code", footerRight - inviteCodeWidth - 16 * scale - inviteLabelWidth, footerBottom);
+
+        // User profile pill
+        if (cardData.showUserProfile) {
+          const pillY = footerBottom - 14 * scale - 18 * scale - 36 * scale;
+          const pillH = 36 * scale;
+          const pillPadLeft = 10 * scale;
+          const pillPadRight = 20 * scale;
+          const avatarSize = 24 * scale;
+          
+          ctx.font = `600 ${16 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          const usernameWidth = ctx.measureText(cardData.username).width;
+          ctx.font = `500 ${14 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          const followersWidth = ctx.measureText(cardData.followers).width;
+          
+          const pillContentWidth = avatarSize + 8 * scale + usernameWidth + 12 * scale + 1 * scale + 8 * scale + 14 * scale + 4 * scale + followersWidth;
+          const pillW = pillPadLeft + pillContentWidth + pillPadRight;
+          const pillX = footerRight - pillW;
+
+          // Pill background
+          ctx.fillStyle = "#000000";
+          ctx.beginPath();
+          ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+          ctx.fill();
+
+          // Avatar
+          if (avatarImg) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pillX + pillPadLeft + avatarSize / 2, pillY + pillH / 2, avatarSize / 2, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(avatarImg, pillX + pillPadLeft, pillY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
+            ctx.restore();
+          }
+
+          // Username
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `600 ${16 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.textBaseline = "middle";
+          ctx.fillText(cardData.username, pillX + pillPadLeft + avatarSize + 8 * scale, pillY + pillH / 2);
+
+          // Divider
+          const divX = pillX + pillPadLeft + avatarSize + 8 * scale + usernameWidth + 12 * scale;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(divX, pillY + (pillH - 16 * scale) / 2, 1 * scale, 16 * scale);
+
+          // Followers
+          ctx.font = `500 ${14 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.fillText(cardData.followers, divX + 1 * scale + 8 * scale + 14 * scale + 4 * scale, pillY + pillH / 2);
+        }
+      };
+
+      // Setup MediaRecorder with canvas stream at fixed 30 FPS
       const canvasStream = canvas.captureStream(30);
       const combinedStream = new MediaStream();
       canvasStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
 
-      // Add audio track (best-effort). Many browsers only allow this for same-origin/data: videos.
+      // Audio capture (best effort)
       let audioAdded = false;
-
-      // 1) Prefer WebAudio -> MediaStreamDestination (works even when captureStream audio is missing)
       try {
         const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
         const audioCtx = new AudioCtx();
@@ -235,6 +367,7 @@ const Index = () => {
         const source = audioCtx.createMediaElementSource(exportVideo);
         const dest = audioCtx.createMediaStreamDestination();
         source.connect(dest);
+        source.connect(audioCtx.destination); // Also play through speakers if needed
         dest.stream.getAudioTracks().forEach((t) => {
           combinedStream.addTrack(t);
           audioAdded = true;
@@ -243,7 +376,6 @@ const Index = () => {
         console.warn("WebAudio capture failed:", e);
       }
 
-      // 2) Fallback: element.captureStream (if available)
       if (!audioAdded) {
         const exportVideoStream: MediaStream | undefined =
           (exportVideo as any).captureStream?.() || (exportVideo as any).mozCaptureStream?.();
@@ -253,18 +385,14 @@ const Index = () => {
         });
       }
 
-      if (!audioAdded) toast.warning("Аудио не удалось захватить (ограничение браузера/видео)");
+      if (!audioAdded) toast.warning("Audio capture failed (browser limitation)");
 
-      const preferredTypes = [
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-      ];
-      const mimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
+      const mimeType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"]
+        .find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
 
       const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType,
-        videoBitsPerSecond: 8_000_000, // Higher bitrate for better quality
+        videoBitsPerSecond: 12_000_000, // 12 Mbps for quality
       });
 
       const chunks: Blob[] = [];
@@ -273,13 +401,10 @@ const Index = () => {
       };
 
       let stopTimer = 0;
-
-      const onEnded = () => {
-        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      };
+      let drawIntervalId: number = 0;
 
       const cleanupAll = () => {
-        exportVideo.removeEventListener("ended", onEnded);
+        clearInterval(drawIntervalId);
         clearTimeout(stopTimer);
         cleanupExportVideo();
         setRecordProgress(null);
@@ -294,60 +419,52 @@ const Index = () => {
         a.download = `gmgn-card-${Date.now()}.webm`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success("Video downloaded successfully!");
+        toast.success("Video downloaded!");
         cleanupAll();
       };
 
       mediaRecorder.onstop = finalize;
 
-      toast.info("Exporting full card video… this takes as long as the BG video");
+      const onEnded = () => {
+        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      };
 
       exportVideo.currentTime = 0;
       exportVideo.addEventListener("ended", onEnded);
 
-      // Safety stop
+      // Safety timeout
       stopTimer = window.setTimeout(() => {
         if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
       }, Math.ceil(exportVideo.duration * 1000) + 500);
 
+      toast.info("Recording in real-time... please wait");
+
       mediaRecorder.start();
       await exportVideo.play();
 
-      // Use interval-based drawing for consistent frame timing (fixes lag)
-      const FPS = 60;
-      const frameInterval = 1000 / FPS;
-      let lastFrameTime = 0;
-      let animationId: number;
-
-      const draw = (timestamp: number) => {
-        if (exportVideo.ended || exportVideo.paused) return;
-
-        const elapsed = timestamp - lastFrameTime;
-        if (elapsed >= frameInterval) {
-          lastFrameTime = timestamp - (elapsed % frameInterval);
-          try {
-            ctx.clearRect(0, 0, 1280, 720);
-            ctx.drawImage(exportVideo, 0, 0, 1280, 720);
-            ctx.drawImage(overlayImg, 0, 0, 1280, 720);
-            if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
-              setRecordProgress(Math.min(1, Math.max(0, exportVideo.currentTime / exportVideo.duration)));
-            }
-          } catch (e) {
-            console.error("Canvas draw error:", e);
-            toast.error("Export failed (likely CORS or browser limitation)");
-            if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-            return;
-          }
+      // FIXED 30 FPS using setInterval (NOT requestAnimationFrame)
+      const FPS = 30;
+      const frameTime = 1000 / FPS;
+      
+      drawIntervalId = window.setInterval(() => {
+        if (exportVideo.ended || exportVideo.paused) {
+          clearInterval(drawIntervalId);
+          return;
         }
-        animationId = requestAnimationFrame(draw);
-      };
-      animationId = requestAnimationFrame(draw);
+        
+        drawFrame();
+        
+        if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
+          setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
+        }
+      }, frameTime);
+
     } catch (error) {
       console.error("Error exporting video:", error);
       toast.error("Failed to export video");
       setIsRecording(false);
     }
-  }, [cardData.backgroundType, cardData.backgroundUrl]);
+  }, [cardData]);
 
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
