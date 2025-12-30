@@ -8,11 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
 const Index = () => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const ffmpegCoreUrlsRef = useRef<{ coreURL: string; wasmURL: string; workerURL: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState<number | null>(null);
   const [cardData, setCardData] = useState({
@@ -80,16 +77,6 @@ const Index = () => {
     }
   };
 
-  const getFfmpegCoreUrls = async () => {
-    if (ffmpegCoreUrlsRef.current) return ffmpegCoreUrlsRef.current;
-
-    const coreURL = await toBlobURL("/ffmpeg/ffmpeg-core.js", "text/javascript");
-    const wasmURL = await toBlobURL("/ffmpeg/ffmpeg-core.wasm", "application/wasm");
-    const workerURL = await toBlobURL("/ffmpeg/ffmpeg-core.worker.js", "text/javascript");
-
-    ffmpegCoreUrlsRef.current = { coreURL, wasmURL, workerURL };
-    return ffmpegCoreUrlsRef.current;
-  };
 
   const handleDownloadPng = async () => {
     if (!cardRef.current) return;
@@ -299,61 +286,16 @@ const Index = () => {
         setIsRecording(false);
       };
 
-      const finalize = async () => {
-        try {
-          toast.info("Converting to MP4... Please wait");
-          
-          const webmBlob = new Blob(chunks, { type: mimeType });
-          
-          // Initialize FFmpeg with single-threaded core (no SharedArrayBuffer needed)
-          const ffmpeg = new FFmpeg();
-          const { coreURL, wasmURL, workerURL } = await getFfmpegCoreUrls();
-          await ffmpeg.load({ coreURL, wasmURL, workerURL });
-          
-          // Write WebM to FFmpeg virtual filesystem
-          const webmData = await fetchFile(webmBlob);
-          await ffmpeg.writeFile("input.webm", webmData);
-          
-          // Convert to MP4 with high quality settings
-          await ffmpeg.exec([
-            "-i", "input.webm",
-            "-c:v", "libx264",
-            "-preset", "slow",
-            "-crf", "18",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-movflags", "+faststart",
-            "-pix_fmt", "yuv420p",
-            "output.mp4"
-          ]);
-          
-          // Read the output MP4
-          const mp4Data = await ffmpeg.readFile("output.mp4");
-          const bytes = new Uint8Array(mp4Data as Uint8Array);
-          const buffer = new ArrayBuffer(bytes.length);
-          new Uint8Array(buffer).set(bytes);
-          const mp4Blob = new Blob([buffer], { type: "video/mp4" });
-          
-          const url = URL.createObjectURL(mp4Blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `gmgn-card-${Date.now()}.mp4`;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast.success("MP4 downloaded successfully!");
-        } catch (err) {
-          console.error("FFmpeg conversion error:", err);
-          toast.error("MP4 conversion failed, downloading WebM instead");
-          const webmBlob = new Blob(chunks, { type: mimeType });
-          const url = URL.createObjectURL(webmBlob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `gmgn-card-${Date.now()}.webm`;
-          a.click();
-          URL.revokeObjectURL(url);
-        } finally {
-          cleanupAll();
-        }
+      const finalize = () => {
+        const webmBlob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(webmBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `gmgn-card-${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Video downloaded successfully!");
+        cleanupAll();
       };
 
       mediaRecorder.onstop = finalize;
@@ -371,24 +313,35 @@ const Index = () => {
       mediaRecorder.start();
       await exportVideo.play();
 
-      const draw = () => {
-        try {
-          ctx.clearRect(0, 0, 1280, 720);
-          ctx.drawImage(exportVideo, 0, 0, 1280, 720);
-          ctx.drawImage(overlayImg, 0, 0, 1280, 720);
-          if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
-            setRecordProgress(Math.min(1, Math.max(0, exportVideo.currentTime / exportVideo.duration)));
-          }
-        } catch (e) {
-          console.error("Canvas draw error:", e);
-          toast.error("Export failed (likely CORS or browser limitation)");
-          if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-          return;
-        }
+      // Use interval-based drawing for consistent frame timing (fixes lag)
+      const FPS = 30;
+      const frameInterval = 1000 / FPS;
+      let lastFrameTime = 0;
+      let animationId: number;
 
-        if (!exportVideo.ended && !exportVideo.paused) requestAnimationFrame(draw);
+      const draw = (timestamp: number) => {
+        if (exportVideo.ended || exportVideo.paused) return;
+
+        const elapsed = timestamp - lastFrameTime;
+        if (elapsed >= frameInterval) {
+          lastFrameTime = timestamp - (elapsed % frameInterval);
+          try {
+            ctx.clearRect(0, 0, 1280, 720);
+            ctx.drawImage(exportVideo, 0, 0, 1280, 720);
+            ctx.drawImage(overlayImg, 0, 0, 1280, 720);
+            if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
+              setRecordProgress(Math.min(1, Math.max(0, exportVideo.currentTime / exportVideo.duration)));
+            }
+          } catch (e) {
+            console.error("Canvas draw error:", e);
+            toast.error("Export failed (likely CORS or browser limitation)");
+            if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+            return;
+          }
+        }
+        animationId = requestAnimationFrame(draw);
       };
-      draw();
+      animationId = requestAnimationFrame(draw);
     } catch (error) {
       console.error("Error exporting video:", error);
       toast.error("Failed to export video");
