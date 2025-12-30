@@ -44,8 +44,8 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
         height: `${baseHeight * scale}px`,
       }}
     >
-      {/* Base fallback background */}
-      <div className="absolute inset-0 bg-black" />
+      {/* Base fallback background (excluded from export overlay) */}
+      <div id="export-fallback-bg" className="absolute inset-0 bg-black" data-export-ignore="true" />
 
       {/* Background Media */}
       {data.backgroundType === "video" ? (
