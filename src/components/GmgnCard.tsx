@@ -108,48 +108,63 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
           {/* Profit Type */}
           <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>{data.profitType}</p>
 
-          {/* PNL Value - knockout text effect when transparent */}
+          {/* PNL Value */}
           <div style={{ marginBottom: `${24 * scale}px` }}>
             <div
-              className="relative flex items-center font-bold overflow-hidden"
+              className="relative overflow-hidden"
               style={{
                 minWidth: `${230 * scale}px`,
-                width: 'fit-content',
+                width: "fit-content",
                 height: `${55 * scale}px`,
                 borderRadius: 0,
                 backgroundColor: pnlBgColor,
               }}
             >
-              {/* Knockout text - background shows through */}
               {data.transparentPnlText ? (
-                <div
-                  className="absolute inset-0 flex items-center font-bold"
-                  style={{
-                    fontSize: `${43 * scale}px`,
-                    paddingLeft: `${10 * scale}px`,
-                    paddingRight: `${10 * scale}px`,
-                    backgroundImage: `url(${data.backgroundUrl})`,
-                    backgroundSize: `${baseWidth * scale}px ${baseHeight * scale}px`,
-                    backgroundPosition: `-${68 * scale}px -${(baseHeight * scale * 0.45)}px`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    color: 'transparent',
-                  }}
+                // "Cut-out" text: PNL bg stays, digits are holes revealing the card background
+                <svg
+                  width="100%"
+                  height="100%"
+                  viewBox={`0 0 ${Math.max(230, 230) * scale} ${55 * scale}`}
+                  preserveAspectRatio="none"
+                  style={{ position: "absolute", inset: 0 }}
                 >
-                  {data.pnlValue}
-                </div>
+                  <defs>
+                    <mask id="pnlMask">
+                      {/* White = visible, Black = transparent */}
+                      <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                      <text
+                        x={`${10 * scale}`}
+                        y="50%"
+                        dominantBaseline="middle"
+                        textAnchor="start"
+                        fill="black"
+                        style={{
+                          fontSize: `${43 * scale}px`,
+                          fontFamily: "inherit",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {data.pnlValue}
+                      </text>
+                    </mask>
+                  </defs>
+
+                  <rect x="0" y="0" width="100%" height="100%" fill={pnlBgColor} mask="url(#pnlMask)" />
+                </svg>
               ) : (
-                <span
+                <div
+                  className="flex h-full items-center"
                   style={{
                     fontSize: `${43 * scale}px`,
                     paddingLeft: `${10 * scale}px`,
                     paddingRight: `${10 * scale}px`,
                     color: "rgb(26,27,31)",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {data.pnlValue}
-                </span>
+                </div>
               )}
             </div>
           </div>
