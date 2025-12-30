@@ -18,6 +18,8 @@ interface GmgnCardData {
   twitterHandle: string;
   websiteUrl: string;
   showUserProfile: boolean;
+  showGradientOverlay: boolean;
+  transparentPnlText: boolean;
 }
 
 interface GmgnCardProps {
@@ -31,10 +33,6 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
   // Base dimensions for preview (750x420)
   const baseWidth = 750;
   const baseHeight = 420;
-
-  // PNL box dimensions from image: content 460x120, padding 20 left/right
-  // Scaled for 1280x720: ratio = 1280/750 = 1.7067
-  // So for export: 460 * 1.7067 = 785, 120 * 1.7067 = 205, padding 20 * 1.7067 = 34
 
   return (
     <div
@@ -62,13 +60,15 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
         />
       )}
 
-      {/* Dark overlay for left side */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.75) 45%, transparent 75%)'
-        }}
-      />
+      {/* Dark overlay for left side - conditionally shown */}
+      {data.showGradientOverlay && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.75) 45%, transparent 75%)'
+          }}
+        />
+      )}
 
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col text-[hsl(var(--gmgn-text-100))] font-bold">
@@ -104,10 +104,9 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
           <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${8 * scale}px` }}>{data.dateRange}</p>
 
           {/* Profit Type */}
-          <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${32 * scale}px` }}>{data.profitType}</p>
+          <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>{data.profitType}</p>
 
-          {/* PNL Value - NO border-radius, text aligned left with padding 20 */}
-          {/* Original: 120px height at 1642px canvas, preview at 750px = 120 * (750/1642) = ~55px */}
+          {/* PNL Value - NO border-radius, text aligned left with padding */}
           <div style={{ marginBottom: `${24 * scale}px` }}>
             <div
               className={`flex items-center font-bold ${
@@ -121,9 +120,18 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
                 paddingLeft: `${10 * scale}px`,
                 paddingRight: `${10 * scale}px`,
                 borderRadius: 0,
-                color: "rgb(26,27,31)",
+                color: data.transparentPnlText ? "transparent" : "rgb(26,27,31)",
                 textAlign: "left",
                 justifyContent: "flex-start",
+                // For transparent text effect - shows background through text
+                ...(data.transparentPnlText && {
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundImage: `url(${data.backgroundUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }),
               }}
             >
               {data.pnlValue}

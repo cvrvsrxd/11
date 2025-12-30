@@ -27,6 +27,8 @@ const Index = () => {
     twitterHandle: "gmgnai",
     websiteUrl: "gmgn.ai",
     showUserProfile: true,
+    showGradientOverlay: true,
+    transparentPnlText: false,
   });
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -92,7 +94,6 @@ const Index = () => {
     if (cardData.backgroundType !== "video") return;
 
     try {
-      // Download the actual video file, not a screenshot
       const res = await fetch(cardData.backgroundUrl);
       const blob = await res.blob();
 
@@ -159,6 +160,28 @@ const Index = () => {
                 id="showUserProfile"
                 checked={cardData.showUserProfile}
                 onCheckedChange={(checked) => handleChange("showUserProfile", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="showGradientOverlay" className="text-[hsl(var(--gmgn-text-200))]">
+                Show Left Gradient Overlay
+              </Label>
+              <Switch
+                id="showGradientOverlay"
+                checked={cardData.showGradientOverlay}
+                onCheckedChange={(checked) => handleChange("showGradientOverlay", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="transparentPnlText" className="text-[hsl(var(--gmgn-text-200))]">
+                Transparent PnL Text
+              </Label>
+              <Switch
+                id="transparentPnlText"
+                checked={cardData.transparentPnlText}
+                onCheckedChange={(checked) => handleChange("transparentPnlText", checked)}
               />
             </div>
 
@@ -294,7 +317,7 @@ const Index = () => {
 
             {cardData.backgroundType === "video" && (
               <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
-                Video background active - Choose Download Video for full video or Download PNG for screenshot
+                Video background active - Download Video saves raw video, Download PNG saves card screenshot
               </div>
             )}
           </div>
