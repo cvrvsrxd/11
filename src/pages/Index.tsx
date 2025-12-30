@@ -314,7 +314,7 @@ const Index = () => {
       await exportVideo.play();
 
       // Use interval-based drawing for consistent frame timing (fixes lag)
-      const FPS = 30;
+      const FPS = 60;
       const frameInterval = 1000 / FPS;
       let lastFrameTime = 0;
       let animationId: number;
