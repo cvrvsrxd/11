@@ -148,8 +148,8 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
                           <rect x="0" y="0" width={w} height={h} fill="white" />
                           <text
                             x={px}
-                            y={h / 2}
-                            dominantBaseline="middle"
+                            y="50%"
+                            dy="0.35em"
                             textAnchor="start"
                             fill="black"
                             style={{
@@ -168,7 +168,7 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
                     </svg>
                   ) : (
                     <div
-                      className="flex h-full items-center"
+                      className="flex h-full items-center justify-start"
                       style={{
                         fontSize,
                         fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
