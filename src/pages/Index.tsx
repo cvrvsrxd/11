@@ -1,15 +1,16 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import GmgnCard from "@/components/GmgnCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 
 const Index = () => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [cardData, setCardData] = useState({
     dateRange: "25/11/01 - 25/12/30",
     profitType: "Realized Profit",
@@ -63,7 +64,7 @@ const Index = () => {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownloadPng = async () => {
     if (!cardRef.current) return;
 
     try {
@@ -90,31 +91,103 @@ const Index = () => {
     }
   };
 
-  const handleDownloadVideo = async () => {
-    if (cardData.backgroundType !== "video") return;
+  const handleDownloadVideo = useCallback(async () => {
+    if (!cardRef.current || cardData.backgroundType !== "video") return;
+
+    setIsRecording(true);
+    toast.info("Recording video... Please wait 5 seconds");
 
     try {
-      const res = await fetch(cardData.backgroundUrl);
-      const blob = await res.blob();
+      const card = cardRef.current;
+      const video = card.querySelector("#bg-video") as HTMLVideoElement;
+      if (!video) {
+        toast.error("No video element found");
+        setIsRecording(false);
+        return;
+      }
 
-      const mime = blob.type || "video/mp4";
-      const ext = mime.includes("webm") ? "webm" : mime.includes("ogg") ? "ogv" : "mp4";
-      const filename =
-        cardData.backgroundFileName?.trim() || `gmgn-background-${Date.now()}.${ext}`;
+      // Create canvas for compositing
+      const canvas = document.createElement("canvas");
+      canvas.width = 1280;
+      canvas.height = 720;
+      const ctx = canvas.getContext("2d")!;
+      const exportScale = 1280 / 750;
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Get MediaRecorder
+      const stream = canvas.captureStream(30);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp9",
+        videoBitsPerSecond: 5000000,
+      });
 
-      toast.success("Video downloaded successfully!");
+      const chunks: Blob[] = [];
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `gmgn-pnl-${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setIsRecording(false);
+        toast.success("Video downloaded successfully!");
+      };
+
+      // Start recording
+      mediaRecorder.start();
+
+      // Record frames for 5 seconds
+      const duration = 5000;
+      const startTime = performance.now();
+
+      const captureFrame = async () => {
+        if (performance.now() - startTime >= duration) {
+          mediaRecorder.stop();
+          return;
+        }
+
+        // Draw video frame
+        ctx.drawImage(video, 0, 0, 1280, 720);
+
+        // Draw overlay using html-to-image
+        try {
+          const overlayDataUrl = await toPng(card, {
+            width: 1280,
+            height: 720,
+            pixelRatio: exportScale,
+            style: {
+              transform: `scale(${exportScale})`,
+              transformOrigin: "top left",
+            },
+            filter: (node) => {
+              // Exclude video element from overlay capture
+              if (node instanceof HTMLVideoElement) return false;
+              return true;
+            },
+          });
+
+          const overlayImg = new Image();
+          overlayImg.onload = () => {
+            ctx.drawImage(overlayImg, 0, 0, 1280, 720);
+            requestAnimationFrame(captureFrame);
+          };
+          overlayImg.src = overlayDataUrl;
+        } catch {
+          requestAnimationFrame(captureFrame);
+        }
+      };
+
+      captureFrame();
     } catch (error) {
-      console.error("Error downloading video:", error);
-      toast.error("Failed to download video");
+      console.error("Error recording video:", error);
+      toast.error("Failed to record video");
+      setIsRecording(false);
     }
-  };
+  }, [cardData.backgroundType]);
 
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
@@ -130,18 +203,31 @@ const Index = () => {
               <GmgnCard ref={cardRef} data={cardData} />
             </div>
             {cardData.backgroundType === "video" ? (
-              <div className="flex gap-3">
-                <Button onClick={handleDownloadVideo} className="font-semibold px-6">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Video
+              <div className="flex gap-3 flex-wrap justify-center">
+                <Button 
+                  onClick={handleDownloadVideo} 
+                  className="font-semibold px-6"
+                  disabled={isRecording}
+                >
+                  {isRecording ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Recording...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Video
+                    </>
+                  )}
                 </Button>
-                <Button onClick={handleDownload} variant="outline" className="font-semibold px-6">
+                <Button onClick={handleDownloadPng} variant="outline" className="font-semibold px-6">
                   <Download className="w-4 h-4 mr-2" />
                   Download PNG
                 </Button>
               </div>
             ) : (
-              <Button onClick={handleDownload} className="font-semibold px-6">
+              <Button onClick={handleDownloadPng} className="font-semibold px-6">
                 <Download className="w-4 h-4 mr-2" />
                 Download PNG (1280x720)
               </Button>
@@ -176,7 +262,7 @@ const Index = () => {
 
             <div className="flex items-center justify-between">
               <Label htmlFor="transparentPnlText" className="text-[hsl(var(--gmgn-text-200))]">
-                Transparent PnL Text
+                Transparent PnL Text (Knockout)
               </Label>
               <Switch
                 id="transparentPnlText"
@@ -317,7 +403,7 @@ const Index = () => {
 
             {cardData.backgroundType === "video" && (
               <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
-                Video background active - Download Video saves raw video, Download PNG saves card screenshot
+                Video background active - Download Video records 5s with full overlay
               </div>
             )}
           </div>
