@@ -79,7 +79,7 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
       )}
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col text-[hsl(var(--gmgn-text-100))] font-bold">
+      <div className="relative z-10 h-full flex flex-col text-[hsl(var(--gmgn-text-100))] font-bold" style={{ fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
         {/* Header */}
         <div className="flex justify-between items-center" style={{ padding: `${20 * scale}px ${68 * scale}px` }}>
           <GmgnLogo style={{ height: `${36 * scale}px`, width: 'auto' }} />
