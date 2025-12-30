@@ -129,10 +129,16 @@ const Index = () => {
               <GmgnCard ref={cardRef} data={cardData} />
             </div>
             {cardData.backgroundType === "video" ? (
-              <Button onClick={handleDownloadVideo} className="font-semibold px-6">
-                <Download className="w-4 h-4 mr-2" />
-                Download Video
-              </Button>
+              <div className="flex gap-3">
+                <Button onClick={handleDownloadVideo} className="font-semibold px-6">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Video
+                </Button>
+                <Button onClick={handleDownload} variant="outline" className="font-semibold px-6">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PNG
+                </Button>
+              </div>
             ) : (
               <Button onClick={handleDownload} className="font-semibold px-6">
                 <Download className="w-4 h-4 mr-2" />
@@ -287,8 +293,8 @@ const Index = () => {
             </div>
 
             {cardData.backgroundType === "video" && (
-              <div className="text-xs text-[rgb(134,217,159)] bg-[rgb(134,217,159)/0.1] px-3 py-2 rounded-lg">
-                Video background active - Download will save the actual video file
+              <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
+                Video background active - Choose Download Video for full video or Download PNG for screenshot
               </div>
             )}
           </div>
