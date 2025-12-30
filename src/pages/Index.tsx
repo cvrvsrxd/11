@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
-
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile } from "@ffmpeg/util";
 const Index = () => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -261,11 +262,10 @@ const Index = () => {
         "video/webm",
       ];
       const mimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
-      const ext = "webm";
 
       const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType,
-        videoBitsPerSecond: 6_000_000,
+        videoBitsPerSecond: 8_000_000, // Higher bitrate for better quality
       });
 
       const chunks: Blob[] = [];
@@ -287,16 +287,62 @@ const Index = () => {
         setIsRecording(false);
       };
 
-      const finalize = () => {
+      const finalize = async () => {
         try {
-          const blob = new Blob(chunks, { type: mimeType });
-          const url = URL.createObjectURL(blob);
+          toast.info("Converting to MP4... Please wait");
+          
+          const webmBlob = new Blob(chunks, { type: mimeType });
+          
+          // Initialize FFmpeg
+          const ffmpeg = new FFmpeg();
+          await ffmpeg.load({
+            coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js",
+            wasmURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm",
+          });
+          
+          // Write WebM to FFmpeg virtual filesystem
+          const webmData = await fetchFile(webmBlob);
+          await ffmpeg.writeFile("input.webm", webmData);
+          
+          // Convert to MP4 with high quality settings
+          await ffmpeg.exec([
+            "-i", "input.webm",
+            "-c:v", "libx264",
+            "-preset", "slow",       // Better compression quality
+            "-crf", "18",            // High quality (lower = better, 18 is visually lossless)
+            "-c:a", "aac",
+            "-b:a", "192k",          // High audio bitrate
+            "-movflags", "+faststart", // Optimize for web playback
+            "-pix_fmt", "yuv420p",   // Compatibility with all players
+            "output.mp4"
+          ]);
+          
+          // Read the output MP4
+          const mp4Data = await ffmpeg.readFile("output.mp4");
+          // Copy to a fresh ArrayBuffer to avoid SharedArrayBuffer issues
+          const bytes = new Uint8Array(mp4Data as Uint8Array);
+          const buffer = new ArrayBuffer(bytes.length);
+          new Uint8Array(buffer).set(bytes);
+          const mp4Blob = new Blob([buffer], { type: "video/mp4" });
+          
+          const url = URL.createObjectURL(mp4Blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = `gmgn-card-${Date.now()}.${ext}`;
+          a.download = `gmgn-card-${Date.now()}.mp4`;
           a.click();
           URL.revokeObjectURL(url);
-          toast.success("Video downloaded successfully!");
+          toast.success("MP4 downloaded successfully!");
+        } catch (err) {
+          console.error("FFmpeg conversion error:", err);
+          toast.error("MP4 conversion failed, downloading WebM instead");
+          // Fallback to WebM
+          const webmBlob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(webmBlob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `gmgn-card-${Date.now()}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
         } finally {
           cleanupAll();
         }
