@@ -12,6 +12,7 @@ const Index = () => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState<number | null>(null);
+  const [exportFps, setExportFps] = useState<number>(30);
   const [cardData, setCardData] = useState({
     dateRange: "25/11/01 - 25/12/30",
     profitType: "Realized Profit",
@@ -353,8 +354,8 @@ const Index = () => {
         }
       };
 
-      // Setup MediaRecorder with canvas stream at fixed 30 FPS
-      const canvasStream = canvas.captureStream(30);
+      // Setup MediaRecorder with canvas stream at selected FPS
+      const canvasStream = canvas.captureStream(exportFps);
       const combinedStream = new MediaStream();
       canvasStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
 
@@ -442,9 +443,8 @@ const Index = () => {
       mediaRecorder.start();
       await exportVideo.play();
 
-      // FIXED 30 FPS using setInterval (NOT requestAnimationFrame)
-      const FPS = 30;
-      const frameTime = 1000 / FPS;
+      // FIXED FPS using setInterval (NOT requestAnimationFrame)
+      const frameTime = 1000 / exportFps;
       
       drawIntervalId = window.setInterval(() => {
         if (exportVideo.ended || exportVideo.paused) {
@@ -464,7 +464,7 @@ const Index = () => {
       toast.error("Failed to export video");
       setIsRecording(false);
     }
-  }, [cardData]);
+  }, [cardData, exportFps]);
 
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
@@ -679,9 +679,29 @@ const Index = () => {
             </div>
 
             {cardData.backgroundType === "video" && (
-              <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
-                Download Video exports the full card video (same duration as BG video)
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label className="text-[hsl(var(--gmgn-text-200))]">Export FPS (for testing)</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[30, 40, 45, 50, 60].map((fps) => (
+                      <button
+                        key={fps}
+                        onClick={() => setExportFps(fps)}
+                        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                          exportFps === fps
+                            ? "bg-[hsl(var(--gmgn-accent-100))] text-black"
+                            : "bg-[hsl(var(--gmgn-bg-200))] text-[hsl(var(--gmgn-text-200))] hover:bg-[hsl(var(--gmgn-hover-100))]"
+                        }`}
+                      >
+                        {fps} FPS
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
+                  Export at {exportFps} FPS (30 FPS most stable)
+                </div>
+              </>
             )}
           </div>
         </div>
