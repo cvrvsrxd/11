@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import GmgnCard from "@/components/GmgnCard";
+import defaultBg from "@/assets/gmgn-default-bg.jpg";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 const Index = () => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordProgress, setRecordProgress] = useState<number | null>(null);
   const [cardData, setCardData] = useState({
     dateRange: "25/11/01 - 25/12/30",
     profitType: "Realized Profit",
@@ -22,8 +24,8 @@ const Index = () => {
     avatarUrl: "/placeholder.svg",
     followers: "8.03K",
     inviteCode: "2xf0NZRc",
-    // Empty by default to avoid CORS-tainted canvas; upload a background for export
-    backgroundUrl: "",
+    // Local default background (safe for canvas export)
+    backgroundUrl: defaultBg,
     backgroundType: "image" as "image" | "video",
     backgroundFileName: "",
     twitterHandle: "gmgnai",
@@ -129,9 +131,11 @@ const Index = () => {
     setIsRecording(true);
 
     const prevLoop = video.loop;
+    const hadLoopAttr = video.hasAttribute("loop");
     try {
       // We need 'ended' to fire to stop recording => temporarily disable loop
       video.loop = false;
+      if (hadLoopAttr) video.removeAttribute("loop");
 
       // Ensure metadata loaded for duration
       if (video.readyState < 1) {
@@ -220,6 +224,8 @@ const Index = () => {
         video.removeEventListener("ended", onEnded);
         clearTimeout(stopTimer);
         video.loop = prevLoop;
+        if (hadLoopAttr) video.setAttribute("loop", "");
+        setRecordProgress(null);
         setIsRecording(false);
       };
 
@@ -244,7 +250,7 @@ const Index = () => {
         if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
       };
 
-      toast.info("Exporting full card video…");
+      toast.info("Exporting full card video… this takes as long as the BG video");
 
       // Start from beginning
       video.pause();
@@ -263,6 +269,9 @@ const Index = () => {
         try {
           ctx.drawImage(video, 0, 0, 1280, 720);
           ctx.drawImage(overlayImg, 0, 0, 1280, 720);
+          if (Number.isFinite(video.duration) && video.duration > 0) {
+            setRecordProgress(Math.min(1, Math.max(0, video.currentTime / video.duration)));
+          }
         } catch (e) {
           console.error("Canvas draw error:", e);
           toast.error("Export failed due to CORS. Upload images/videos instead of hotlinking.");
@@ -304,7 +313,7 @@ const Index = () => {
                   {isRecording ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Recording...
+                      {recordProgress === null ? "Exporting…" : `Exporting ${Math.round(recordProgress * 100)}%`}
                     </>
                   ) : (
                     <>

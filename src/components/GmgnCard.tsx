@@ -126,12 +126,12 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
               return (
                 <div
                   className="relative overflow-hidden"
-                  style={{
-                    width: `${w}px`,
-                    height: `${h}px`,
-                    borderRadius: 0,
-                    backgroundColor: pnlBgColor,
-                  }}
+              style={{
+                width: `${w}px`,
+                height: `${h}px`,
+                borderRadius: 0,
+                backgroundColor: data.transparentPnlText ? "transparent" : pnlBgColor,
+              }}
                 >
                   {data.transparentPnlText ? (
                     // "Cut-out" text: PNL bg stays, digits are holes revealing the card background
