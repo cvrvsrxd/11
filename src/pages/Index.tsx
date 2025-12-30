@@ -293,11 +293,11 @@ const Index = () => {
           
           const webmBlob = new Blob(chunks, { type: mimeType });
           
-          // Initialize FFmpeg
+          // Initialize FFmpeg with single-threaded core (no SharedArrayBuffer needed)
           const ffmpeg = new FFmpeg();
           await ffmpeg.load({
-            coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js",
-            wasmURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm",
+            coreURL: "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/esm/ffmpeg-core.js",
+            wasmURL: "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/esm/ffmpeg-core.wasm",
           });
           
           // Write WebM to FFmpeg virtual filesystem
@@ -308,18 +308,17 @@ const Index = () => {
           await ffmpeg.exec([
             "-i", "input.webm",
             "-c:v", "libx264",
-            "-preset", "slow",       // Better compression quality
-            "-crf", "18",            // High quality (lower = better, 18 is visually lossless)
+            "-preset", "slow",
+            "-crf", "18",
             "-c:a", "aac",
-            "-b:a", "192k",          // High audio bitrate
-            "-movflags", "+faststart", // Optimize for web playback
-            "-pix_fmt", "yuv420p",   // Compatibility with all players
+            "-b:a", "192k",
+            "-movflags", "+faststart",
+            "-pix_fmt", "yuv420p",
             "output.mp4"
           ]);
           
           // Read the output MP4
           const mp4Data = await ffmpeg.readFile("output.mp4");
-          // Copy to a fresh ArrayBuffer to avoid SharedArrayBuffer issues
           const bytes = new Uint8Array(mp4Data as Uint8Array);
           const buffer = new ArrayBuffer(bytes.length);
           new Uint8Array(buffer).set(bytes);
@@ -335,7 +334,6 @@ const Index = () => {
         } catch (err) {
           console.error("FFmpeg conversion error:", err);
           toast.error("MP4 conversion failed, downloading WebM instead");
-          // Fallback to WebM
           const webmBlob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(webmBlob);
           const a = document.createElement("a");
