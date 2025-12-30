@@ -18,11 +18,12 @@ const Index = () => {
     txWin: "1,213",
     txLoss: "1,119",
     username: "Esee",
-    avatarUrl: "https://gmgn.ai/defi/images/twitter/4b6ee79033b5a369a861457dbca75657.jpg",
+    // Default to local placeholder to avoid CORS issues during export
+    avatarUrl: "/placeholder.svg",
     followers: "8.03K",
     inviteCode: "2xf0NZRc",
-    backgroundUrl:
-      "https://gmgn.ai/defi/images/userbanner/00a4680a-421d-499d-86ba-2519743dbb19_pnl_coin_1767035142360.jpg",
+    // Empty by default to avoid CORS-tainted canvas; upload a background for export
+    backgroundUrl: "",
     backgroundType: "image" as "image" | "video",
     backgroundFileName: "",
     twitterHandle: "gmgnai",
@@ -64,6 +65,17 @@ const Index = () => {
     }
   };
 
+  const isSafeCanvasUrl = (url: string) => {
+    if (!url) return true;
+    if (url.startsWith("data:") || url.startsWith("blob:")) return true;
+    if (url.startsWith("/")) return true;
+    try {
+      return new URL(url, window.location.href).origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  };
+
   const handleDownloadPng = async () => {
     if (!cardRef.current) return;
 
@@ -78,6 +90,13 @@ const Index = () => {
           transform: `scale(${exportScale})`,
           transformOrigin: "top left",
         },
+        filter: (node) => {
+          if (node instanceof HTMLImageElement) {
+            const src = node.getAttribute("src") || "";
+            return isSafeCanvasUrl(src);
+          }
+          return true;
+        },
       });
 
       const link = document.createElement("a");
@@ -87,7 +106,7 @@ const Index = () => {
       toast.success("PNG downloaded successfully!");
     } catch (error) {
       console.error("Error downloading PNG:", error);
-      toast.error("Failed to download PNG");
+      toast.error("Export failed due to CORS. Upload images/videos instead of hotlinking.");
     }
   };
 
@@ -102,10 +121,19 @@ const Index = () => {
       return;
     }
 
+    if (!isSafeCanvasUrl(cardData.backgroundUrl)) {
+      toast.error("Video export blocked by CORS. Please upload the video file.");
+      return;
+    }
+
     setIsRecording(true);
 
+    const prevLoop = video.loop;
     try {
-      // Ensure video metadata is loaded (duration available)
+      // We need 'ended' to fire to stop recording => temporarily disable loop
+      video.loop = false;
+
+      // Ensure metadata loaded for duration
       if (video.readyState < 1) {
         await new Promise<void>((resolve, reject) => {
           const onLoaded = () => {
@@ -125,7 +153,14 @@ const Index = () => {
         });
       }
 
-      // Capture overlay (everything except the background video) ONCE
+      if (!Number.isFinite(video.duration) || video.duration <= 0) {
+        toast.error("Cannot export: video duration unknown");
+        setIsRecording(false);
+        video.loop = prevLoop;
+        return;
+      }
+
+      // Capture overlay once (everything except bg-video, and skip unsafe images)
       const exportScale = 1280 / 750;
       const overlayDataUrl = await toPng(card, {
         width: 1280,
@@ -138,6 +173,10 @@ const Index = () => {
         },
         filter: (node) => {
           if (node instanceof HTMLVideoElement) return false;
+          if (node instanceof HTMLImageElement) {
+            const src = node.getAttribute("src") || "";
+            return isSafeCanvasUrl(src);
+          }
           return true;
         },
       });
@@ -149,7 +188,6 @@ const Index = () => {
         img.src = overlayDataUrl;
       });
 
-      // Prepare canvas to composite: VIDEO + OVERLAY
       const canvas = document.createElement("canvas");
       canvas.width = 1280;
       canvas.height = 720;
@@ -158,7 +196,6 @@ const Index = () => {
 
       const stream = canvas.captureStream(30);
 
-      // Try MP4 first, fallback to WebM
       const preferredTypes = [
         "video/mp4;codecs=avc1.42E01E",
         "video/mp4",
@@ -179,6 +216,13 @@ const Index = () => {
         if (e.data.size > 0) chunks.push(e.data);
       };
 
+      const cleanupAll = () => {
+        video.removeEventListener("ended", onEnded);
+        clearTimeout(stopTimer);
+        video.loop = prevLoop;
+        setIsRecording(false);
+      };
+
       const finalize = () => {
         try {
           const blob = new Blob(chunks, { type: mimeType });
@@ -190,37 +234,38 @@ const Index = () => {
           URL.revokeObjectURL(url);
           toast.success("Video downloaded successfully!");
         } finally {
-          setIsRecording(false);
+          cleanupAll();
         }
       };
 
       mediaRecorder.onstop = finalize;
 
-      // Start from the beginning and record full video duration (real-time)
-      video.pause();
-      video.currentTime = 0;
-
       const onEnded = () => {
-        video.removeEventListener("ended", onEnded);
         if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
       };
+
+      toast.info("Exporting full card video…");
+
+      // Start from beginning
+      video.pause();
+      video.currentTime = 0;
       video.addEventListener("ended", onEnded);
 
-      toast.info("Recording full card video… (duration equals BG video)");
-      mediaRecorder.start();
+      // Safety stop
+      const stopTimer = window.setTimeout(() => {
+        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      }, Math.ceil(video.duration * 1000) + 250);
 
-      // Start playback
+      mediaRecorder.start();
       await video.play();
 
-      // Draw loop (composite frame)
       const draw = () => {
         try {
           ctx.drawImage(video, 0, 0, 1280, 720);
           ctx.drawImage(overlayImg, 0, 0, 1280, 720);
         } catch (e) {
           console.error("Canvas draw error:", e);
-          toast.error("Cannot export video (CORS). Use uploaded assets.");
-          video.removeEventListener("ended", onEnded);
+          toast.error("Export failed due to CORS. Upload images/videos instead of hotlinking.");
           if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
           return;
         }
@@ -232,8 +277,9 @@ const Index = () => {
       console.error("Error exporting video:", error);
       toast.error("Failed to export video");
       setIsRecording(false);
+      video.loop = prevLoop;
     }
-  }, [cardData.backgroundType]);
+  }, [cardData.backgroundType, cardData.backgroundUrl]);
 
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
