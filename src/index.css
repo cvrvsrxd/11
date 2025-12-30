@@ -1,96 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* GMGN Color System */
+    --background: 220 14% 7%;
+    --foreground: 180 8% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 10% 11%;
+    --card-foreground: 180 8% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 10% 11%;
+    --popover-foreground: 180 8% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 148 55% 69%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 7% 13%;
+    --secondary-foreground: 180 8% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 7% 18%;
+    --muted-foreground: 180 5% 48%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 148 55% 69%;
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 352 85% 67%;
+    --destructive-foreground: 0 0% 0%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --success: 148 55% 69%;
+    --success-foreground: 0 0% 0%;
+
+    --border: 220 7% 17%;
+    --input: 220 7% 13%;
+    --ring: 148 55% 69%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* GMGN specific colors */
+    --gmgn-green-100: 148 55% 69%;
+    --gmgn-green-200: 148 55% 69% / 0.14;
+    --gmgn-red-100: 352 85% 67%;
+    --gmgn-red-200: 352 85% 67% / 0.14;
+    --gmgn-yellow-100: 40 85% 67%;
+    --gmgn-blue-100: 209 100% 54%;
+    --gmgn-text-100: 180 8% 95%;
+    --gmgn-text-200: 180 5% 78%;
+    --gmgn-text-300: 180 5% 48%;
+    --gmgn-text-400: 180 5% 38%;
+    --gmgn-bg-100: 220 14% 7%;
+    --gmgn-bg-200: 220 12% 9%;
+    --gmgn-card-100: 220 10% 11%;
+    --gmgn-line-100: 220 7% 17%;
+    --gmgn-line-200: 220 7% 19%;
+    --gmgn-hover-100: 220 8% 13%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 10% 11%;
+    --sidebar-foreground: 180 8% 95%;
+    --sidebar-primary: 148 55% 69%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 220 7% 13%;
+    --sidebar-accent-foreground: 180 8% 95%;
+    --sidebar-border: 220 7% 17%;
+    --sidebar-ring: 148 55% 69%;
   }
 }
 
@@ -100,6 +75,13 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.2px;
   }
+}
+
+.drop-shadow-text {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }

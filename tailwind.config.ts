@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,11 +60,49 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        gmgn: {
+          green: {
+            100: "hsl(var(--gmgn-green-100))",
+            200: "hsl(var(--gmgn-green-200))",
+          },
+          red: {
+            100: "hsl(var(--gmgn-red-100))",
+            200: "hsl(var(--gmgn-red-200))",
+          },
+          yellow: {
+            100: "hsl(var(--gmgn-yellow-100))",
+          },
+          blue: {
+            100: "hsl(var(--gmgn-blue-100))",
+          },
+          text: {
+            100: "hsl(var(--gmgn-text-100))",
+            200: "hsl(var(--gmgn-text-200))",
+            300: "hsl(var(--gmgn-text-300))",
+            400: "hsl(var(--gmgn-text-400))",
+          },
+          bg: {
+            100: "hsl(var(--gmgn-bg-100))",
+            200: "hsl(var(--gmgn-bg-200))",
+          },
+          card: {
+            100: "hsl(var(--gmgn-card-100))",
+          },
+          line: {
+            100: "hsl(var(--gmgn-line-100))",
+            200: "hsl(var(--gmgn-line-200))",
+          },
+          hover: {
+            100: "hsl(var(--gmgn-hover-100))",
+          },
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "1rem",
+        "2xl": "1rem",
       },
       keyframes: {
         "accordion-down": {
