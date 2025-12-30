@@ -107,17 +107,19 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
           <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${32 * scale}px` }}>{data.profitType}</p>
 
           {/* PNL Value - NO border-radius, text aligned left with padding 20 */}
-          <div style={{ marginBottom: `${32 * scale}px` }}>
+          {/* Original: 120px height at 1642px canvas, preview at 750px = 120 * (750/1642) = ~55px */}
+          <div style={{ marginBottom: `${24 * scale}px` }}>
             <div
               className={`flex items-center font-bold ${
                 isNegative ? "bg-[rgb(242,102,130)]" : "bg-[rgb(134,217,159)]"
               }`}
               style={{
-                width: `${500 * scale}px`,
-                height: `${120 * scale}px`,
-                fontSize: `${94 * scale}px`,
-                paddingLeft: `${20 * scale}px`,
-                paddingRight: `${20 * scale}px`,
+                minWidth: `${230 * scale}px`,
+                width: 'fit-content',
+                height: `${55 * scale}px`,
+                fontSize: `${43 * scale}px`,
+                paddingLeft: `${10 * scale}px`,
+                paddingRight: `${10 * scale}px`,
                 borderRadius: 0,
                 color: "rgb(26,27,31)",
                 textAlign: "left",
