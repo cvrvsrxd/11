@@ -9,9 +9,10 @@ import { Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile } from "@ffmpeg/util";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
 const Index = () => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const ffmpegCoreUrlsRef = useRef<{ coreURL: string; wasmURL: string; workerURL: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState<number | null>(null);
   const [cardData, setCardData] = useState({
@@ -77,6 +78,17 @@ const Index = () => {
     } catch {
       return false;
     }
+  };
+
+  const getFfmpegCoreUrls = async () => {
+    if (ffmpegCoreUrlsRef.current) return ffmpegCoreUrlsRef.current;
+
+    const coreURL = await toBlobURL("/ffmpeg/ffmpeg-core.js", "text/javascript");
+    const wasmURL = await toBlobURL("/ffmpeg/ffmpeg-core.wasm", "application/wasm");
+    const workerURL = await toBlobURL("/ffmpeg/ffmpeg-core.worker.js", "text/javascript");
+
+    ffmpegCoreUrlsRef.current = { coreURL, wasmURL, workerURL };
+    return ffmpegCoreUrlsRef.current;
   };
 
   const handleDownloadPng = async () => {
@@ -295,10 +307,8 @@ const Index = () => {
           
           // Initialize FFmpeg with single-threaded core (no SharedArrayBuffer needed)
           const ffmpeg = new FFmpeg();
-          await ffmpeg.load({
-            coreURL: "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/esm/ffmpeg-core.js",
-            wasmURL: "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/esm/ffmpeg-core.wasm",
-          });
+          const { coreURL, wasmURL, workerURL } = await getFfmpegCoreUrls();
+          await ffmpeg.load({ coreURL, wasmURL, workerURL });
           
           // Write WebM to FFmpeg virtual filesystem
           const webmData = await fetchFile(webmBlob);
