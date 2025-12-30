@@ -94,30 +94,84 @@ const Index = () => {
   const handleDownloadVideo = useCallback(async () => {
     if (!cardRef.current || cardData.backgroundType !== "video") return;
 
+    const card = cardRef.current;
+    const video = card.querySelector("#bg-video") as HTMLVideoElement | null;
+
+    if (!video) {
+      toast.error("Video background not found in card");
+      return;
+    }
+
     setIsRecording(true);
-    toast.info("Recording video... Please wait 5 seconds");
 
     try {
-      const card = cardRef.current;
-      const video = card.querySelector("#bg-video") as HTMLVideoElement;
-      if (!video) {
-        toast.error("No video element found");
-        setIsRecording(false);
-        return;
+      // Ensure video metadata is loaded (duration available)
+      if (video.readyState < 1) {
+        await new Promise<void>((resolve, reject) => {
+          const onLoaded = () => {
+            cleanup();
+            resolve();
+          };
+          const onError = () => {
+            cleanup();
+            reject(new Error("Could not load video metadata"));
+          };
+          const cleanup = () => {
+            video.removeEventListener("loadedmetadata", onLoaded);
+            video.removeEventListener("error", onError);
+          };
+          video.addEventListener("loadedmetadata", onLoaded);
+          video.addEventListener("error", onError);
+        });
       }
 
-      // Create canvas for compositing
+      // Capture overlay (everything except the background video) ONCE
+      const exportScale = 1280 / 750;
+      const overlayDataUrl = await toPng(card, {
+        width: 1280,
+        height: 720,
+        pixelRatio: exportScale,
+        backgroundColor: "transparent",
+        style: {
+          transform: `scale(${exportScale})`,
+          transformOrigin: "top left",
+        },
+        filter: (node) => {
+          if (node instanceof HTMLVideoElement) return false;
+          return true;
+        },
+      });
+
+      const overlayImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Failed to load overlay image"));
+        img.src = overlayDataUrl;
+      });
+
+      // Prepare canvas to composite: VIDEO + OVERLAY
       const canvas = document.createElement("canvas");
       canvas.width = 1280;
       canvas.height = 720;
-      const ctx = canvas.getContext("2d")!;
-      const exportScale = 1280 / 750;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
 
-      // Get MediaRecorder
       const stream = canvas.captureStream(30);
+
+      // Try MP4 first, fallback to WebM
+      const preferredTypes = [
+        "video/mp4;codecs=avc1.42E01E",
+        "video/mp4",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+      ];
+      const mimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
+      const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp9",
-        videoBitsPerSecond: 5000000,
+        mimeType,
+        videoBitsPerSecond: 6_000_000,
       });
 
       const chunks: Blob[] = [];
@@ -125,66 +179,58 @@ const Index = () => {
         if (e.data.size > 0) chunks.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "video/webm" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `gmgn-pnl-${Date.now()}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setIsRecording(false);
-        toast.success("Video downloaded successfully!");
+      const finalize = () => {
+        try {
+          const blob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `gmgn-card-${Date.now()}.${ext}`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast.success("Video downloaded successfully!");
+        } finally {
+          setIsRecording(false);
+        }
       };
 
-      // Start recording
+      mediaRecorder.onstop = finalize;
+
+      // Start from the beginning and record full video duration (real-time)
+      video.pause();
+      video.currentTime = 0;
+
+      const onEnded = () => {
+        video.removeEventListener("ended", onEnded);
+        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      };
+      video.addEventListener("ended", onEnded);
+
+      toast.info("Recording full card video… (duration equals BG video)");
       mediaRecorder.start();
 
-      // Record frames for 5 seconds
-      const duration = 5000;
-      const startTime = performance.now();
+      // Start playback
+      await video.play();
 
-      const captureFrame = async () => {
-        if (performance.now() - startTime >= duration) {
-          mediaRecorder.stop();
+      // Draw loop (composite frame)
+      const draw = () => {
+        try {
+          ctx.drawImage(video, 0, 0, 1280, 720);
+          ctx.drawImage(overlayImg, 0, 0, 1280, 720);
+        } catch (e) {
+          console.error("Canvas draw error:", e);
+          toast.error("Cannot export video (CORS). Use uploaded assets.");
+          video.removeEventListener("ended", onEnded);
+          if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
           return;
         }
 
-        // Draw video frame
-        ctx.drawImage(video, 0, 0, 1280, 720);
-
-        // Draw overlay using html-to-image
-        try {
-          const overlayDataUrl = await toPng(card, {
-            width: 1280,
-            height: 720,
-            pixelRatio: exportScale,
-            style: {
-              transform: `scale(${exportScale})`,
-              transformOrigin: "top left",
-            },
-            filter: (node) => {
-              // Exclude video element from overlay capture
-              if (node instanceof HTMLVideoElement) return false;
-              return true;
-            },
-          });
-
-          const overlayImg = new Image();
-          overlayImg.onload = () => {
-            ctx.drawImage(overlayImg, 0, 0, 1280, 720);
-            requestAnimationFrame(captureFrame);
-          };
-          overlayImg.src = overlayDataUrl;
-        } catch {
-          requestAnimationFrame(captureFrame);
-        }
+        if (!video.ended && !video.paused) requestAnimationFrame(draw);
       };
-
-      captureFrame();
+      draw();
     } catch (error) {
-      console.error("Error recording video:", error);
-      toast.error("Failed to record video");
+      console.error("Error exporting video:", error);
+      toast.error("Failed to export video");
       setIsRecording(false);
     }
   }, [cardData.backgroundType]);
@@ -403,7 +449,7 @@ const Index = () => {
 
             {cardData.backgroundType === "video" && (
               <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
-                Video background active - Download Video records 5s with full overlay
+                Download Video exports the full card video (same duration as BG video)
               </div>
             )}
           </div>
