@@ -529,7 +529,8 @@ const Index = () => {
         } else {
           // Version 2: Month + Win Streak
           overlayCtx.fillText(cardData.month || "January 2026", contentLeft, contentY);
-          const streakY = contentY + s(56 + 8);
+          // Line height ~1.2x font-size + margin = 56*1.2 + 8 ≈ 75
+          const streakY = contentY + s(75);
           overlayCtx.fillStyle = "rgb(134,217,159)";
           const streakDays = `${cardData.winStreak || "2"}Days`;
           overlayCtx.fillText(streakDays, contentLeft, streakY);
@@ -544,7 +545,7 @@ const Index = () => {
         const pnlY =
           cardVersion === 1
             ? contentY + s(56 + 16 + 56 + 40) // dateRange mb=16, profitType mb=40
-            : contentY + s(56 + 8 + 56 + 48); // month mb=8, winStreak mb=48
+            : contentY + s(75 + 75 + 48); // 75px line height each + 48px margin
         const pnlH = s(120);
         const pnlFontSize = s(94);
         const pnlPx = s(20);
@@ -1023,7 +1024,8 @@ const Index = () => {
         ctx.fillText(cardData.profitType, contentLeft, contentY + s(56 + 16));
       } else {
         ctx.fillText(cardData.month || "January 2026", contentLeft, contentY);
-        const streakY = contentY + s(56 + 8);
+        // Line height ~1.2x font-size + margin = 56*1.2 + 8 ≈ 75
+        const streakY = contentY + s(75);
         ctx.fillStyle = "rgb(134,217,159)";
         const streakDays = `${cardData.winStreak || "2"}Days`;
         ctx.fillText(streakDays, contentLeft, streakY);
@@ -1037,7 +1039,7 @@ const Index = () => {
       const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
       const pnlY = cardVersion === 1
         ? contentY + s(56 + 16 + 56 + 40)
-        : contentY + s(56 + 8 + 56 + 48);
+        : contentY + s(75 + 75 + 48);  // 75px line height each + 48px margin
       const pnlH = s(120);
       const pnlFontSize = s(94);
       const pnlPx = s(20);
