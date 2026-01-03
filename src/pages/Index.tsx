@@ -293,16 +293,10 @@ const Index = () => {
         <path d="M1.2805 5.4972h2.2257c.0871-1.7077.6106-3.102 1.2575-4.0795-1.865.5015-3.2758 2.1111-3.4832 4.0795M6.02 1.4314c-.6827.7522-1.398 2.1522-1.5066 4.0658h3.063c-.1038-2.021-.826-3.352-1.5564-4.0658m1.555 5.0715H4.517c.0602.8633.27 1.707.5648 2.4398.2683.6668.5967 1.2165.9246 1.6007.7603-.814 1.4615-2.1564 1.5686-4.0405m-2.7784 4.0882c-.2429-.3799-.4623-.8115-.648-1.273-.338-.8403-.578-1.8126-.6396-2.8152H1.2805c.2086 1.98 1.6349 3.5969 3.516 4.0882m2.4763-.0193c1.8457-.5132 3.2385-2.1141 3.4445-4.0689h-2.135c-.0876 1.718-.619 3.0805-1.3094 4.0689m3.4445-5.0746C10.514 3.5666 9.1529 1.981 7.3411 1.4478c.6597.9513 1.161 2.305 1.2422 4.0494zM.2484 6C.2484 2.8242 2.823.2496 5.999.2496s5.7506 2.5746 5.7506 5.7505c0 3.176-2.5746 5.7506-5.7505 5.7506C2.823 11.7506.2483 9.176.2483 6"/>
       </svg>`;
 
-      // User icon SVG for followers
-      const userIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="32" height="32">
-        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-      </svg>`;
-
-      const [gmgnLogoImg, xIconImg, globeIconImg, userIconImg] = await Promise.all([
+      const [gmgnLogoImg, xIconImg, globeIconImg] = await Promise.all([
         loadSvgAsImage(gmgnLogoSvg),
         loadSvgAsImage(xIconSvg),
         loadSvgAsImage(globeIconSvg),
-        loadSvgAsImage(userIconSvg),
       ]);
 
       // Create canvas - all rendering happens here
@@ -355,15 +349,15 @@ const Index = () => {
         ctx.font = `normal ${s(32)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.textBaseline = "middle";
         const headerTextY = headerHeight / 2;
-        const iconSize = s(32);
-        
+        const iconSize = s(40);
+
         // Layout from right: website text, globe icon, gap, twitter text, x icon
         const websiteText = cardData.websiteUrl;
         const twitterText = cardData.twitterHandle;
         const websiteWidth = ctx.measureText(websiteText).width;
         const twitterWidth = ctx.measureText(twitterText).width;
         const iconTextGap = s(8);
-        const groupGap = s(32);
+        const groupGap = s(60);
 
         // Draw website (rightmost)
         const websiteTextX = 1280 - sideMargin - websiteWidth;
@@ -413,34 +407,45 @@ const Index = () => {
         // PNL Block: height=120, min-width=500, px=20
         const isNegative = cardData.pnlValue.startsWith("-");
         const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
-        const pnlY = contentY + s(56 + 16 + 56 + 48); // after two lines of text
+        const pnlY =
+          cardVersion === 1
+            ? contentY + s(56 + 16 + 56 + 40) // dateRange mb=16, profitType mb=40
+            : contentY + s(56 + 8 + 56 + 48); // month mb=8, winStreak mb=48
         const pnlH = s(120);
         const pnlFontSize = s(94);
         const pnlPx = s(20);
         const pnlMinW = s(500);
-        
+
         ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
         const textMetrics = ctx.measureText(cardData.pnlValue);
         const pnlW = Math.max(pnlMinW, textMetrics.width + pnlPx * 2);
 
-        // PNL text center Y position
-        const pnlTextY = pnlY + pnlH / 2;
+        // Match DOM preview vertical centering (SVG uses y=50% + dy=0.35em)
+        const pnlCenterY = pnlY + pnlH / 2;
+        const hasBBox =
+          Number.isFinite(textMetrics.actualBoundingBoxAscent) &&
+          Number.isFinite(textMetrics.actualBoundingBoxDescent) &&
+          textMetrics.actualBoundingBoxAscent > 0;
+        const pnlTextY = hasBBox
+          ? pnlCenterY + (textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent) / 2
+          : pnlCenterY + pnlFontSize * 0.35;
 
         if (cardData.transparentPnlText) {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
           ctx.globalCompositeOperation = "destination-out";
           ctx.fillStyle = "#000";
-          ctx.textBaseline = "middle";
+          ctx.textBaseline = "alphabetic";
           ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
           ctx.globalCompositeOperation = "source-over";
         } else {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
           ctx.fillStyle = "#000000";
-          ctx.textBaseline = "middle";
+          ctx.textBaseline = "alphabetic";
           ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
         }
+
 
         // Stats below PNL
         ctx.textBaseline = "top";
@@ -519,51 +524,52 @@ const Index = () => {
           
           ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
           const usernameWidth = ctx.measureText(cardData.username).width;
-          ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          const followersWidth = ctx.measureText(cardData.followers).width;
-          const userIconSize = s(32);
-          
-          const pillContentWidth = avatarSize + s(12) + usernameWidth + s(12) + s(3) + s(8) + userIconSize + s(4) + followersWidth;
-          const pillW = pillPadLeft + pillContentWidth + pillPadRight;
-          const pillX = footerRight - pillW;
+           ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+           const followersWidth = ctx.measureText(cardData.followers).width;
+           const xSmallSize = s(32);
+           
+           const pillContentWidth = avatarSize + s(12) + usernameWidth + s(12) + s(3) + s(8) + xSmallSize + s(4) + followersWidth;
+           const pillW = pillPadLeft + pillContentWidth + pillPadRight;
+           const pillX = footerRight - pillW;
 
-          // Pill background
-          ctx.fillStyle = "#000000";
-          ctx.beginPath();
-          ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
-          ctx.fill();
+           // Pill background
+           ctx.fillStyle = "#000000";
+           ctx.beginPath();
+           ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+           ctx.fill();
 
-          // Avatar
-          if (avatarImg) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(pillX + pillPadLeft + avatarSize / 2, pillY + pillH / 2, avatarSize / 2, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.drawImage(avatarImg, pillX + pillPadLeft, pillY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
-            ctx.restore();
-          }
+           // Avatar
+           if (avatarImg) {
+             ctx.save();
+             ctx.beginPath();
+             ctx.arc(pillX + pillPadLeft + avatarSize / 2, pillY + pillH / 2, avatarSize / 2, 0, Math.PI * 2);
+             ctx.clip();
+             ctx.drawImage(avatarImg, pillX + pillPadLeft, pillY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
+             ctx.restore();
+           }
 
-          // Username
-          ctx.fillStyle = "#ffffff";
-          ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          ctx.textBaseline = "middle";
-          ctx.fillText(cardData.username, pillX + pillPadLeft + avatarSize + s(12), pillY + pillH / 2);
+           // Username
+           ctx.fillStyle = "#ffffff";
+           ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+           ctx.textBaseline = "middle";
+           ctx.fillText(cardData.username, pillX + pillPadLeft + avatarSize + s(12), pillY + pillH / 2);
 
-          // Divider
-          const divX = pillX + pillPadLeft + avatarSize + s(12) + usernameWidth + s(12);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(divX, pillY + (pillH - s(32)) / 2, s(3), s(32));
+           // Divider
+           const divX = pillX + pillPadLeft + avatarSize + s(12) + usernameWidth + s(12);
+           ctx.fillStyle = "#ffffff";
+           ctx.fillRect(divX, pillY + (pillH - s(32)) / 2, s(3), s(32));
 
-          // User icon for followers
-          const userIconX = divX + s(3) + s(8);
-          if (userIconImg) {
-            ctx.drawImage(userIconImg, userIconX, pillY + (pillH - userIconSize) / 2, userIconSize, userIconSize);
-          }
+           // X icon (followers)
+           const xSmallX = divX + s(3) + s(8);
+           if (xIconImg) {
+             ctx.drawImage(xIconImg, xSmallX, pillY + (pillH - xSmallSize) / 2, xSmallSize, xSmallSize);
+           }
 
-          // Followers
-          ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          ctx.fillText(cardData.followers, userIconX + userIconSize + s(4), pillY + pillH / 2);
-        }
+           // Followers
+           ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+           ctx.fillText(cardData.followers, xSmallX + xSmallSize + s(4), pillY + pillH / 2);
+         }
+
       };
       // Setup MediaRecorder with canvas stream at selected FPS
       const canvasStream = canvas.captureStream(exportFps);
