@@ -423,24 +423,23 @@ const Index = () => {
         const textMetrics = ctx.measureText(cardData.pnlValue);
         const pnlW = Math.max(pnlMinW, textMetrics.width + pnlPx * 2);
 
-        // Calculate vertical center for text - use actualBoundingBoxAscent/Descent for precise centering
-        const textHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent;
-        const textCenterY = pnlY + pnlH / 2 + textMetrics.actualBoundingBoxAscent - textHeight / 2;
+        // PNL text center Y position
+        const pnlTextY = pnlY + pnlH / 2;
 
         if (cardData.transparentPnlText) {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
           ctx.globalCompositeOperation = "destination-out";
           ctx.fillStyle = "#000";
-          ctx.textBaseline = "alphabetic";
-          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, textCenterY);
+          ctx.textBaseline = "middle";
+          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
           ctx.globalCompositeOperation = "source-over";
         } else {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
           ctx.fillStyle = "#000000";
-          ctx.textBaseline = "alphabetic";
-          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, textCenterY);
+          ctx.textBaseline = "middle";
+          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
         }
 
         // Stats below PNL
