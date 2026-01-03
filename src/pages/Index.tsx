@@ -177,6 +177,17 @@ const Index = () => {
         return;
       }
 
+      // Ensure Geist is loaded before we start drawing/recording (prevents text metric shifts)
+      if ("fonts" in document && document.fonts) {
+        await Promise.all([
+          document.fonts.load("700 80px Geist"),
+          document.fonts.load("600 40px Geist"),
+          document.fonts.load("500 40px Geist"),
+          document.fonts.load("400 32px Geist"),
+          document.fonts.ready,
+        ]);
+      }
+
       // Preload avatar image
       let avatarImg: HTMLImageElement | null = null;
       if (cardData.showUserProfile && cardData.avatarUrl) {
@@ -422,13 +433,7 @@ const Index = () => {
 
         // Match DOM preview vertical centering (SVG uses y=50% + dy=0.35em)
         const pnlCenterY = pnlY + pnlH / 2;
-        const hasBBox =
-          Number.isFinite(textMetrics.actualBoundingBoxAscent) &&
-          Number.isFinite(textMetrics.actualBoundingBoxDescent) &&
-          textMetrics.actualBoundingBoxAscent > 0;
-        const pnlTextY = hasBBox
-          ? pnlCenterY + (textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent) / 2
-          : pnlCenterY + pnlFontSize * 0.35;
+        const pnlTextY = pnlCenterY + pnlFontSize * 0.35;
 
         if (cardData.transparentPnlText) {
           ctx.fillStyle = pnlBgColor;
