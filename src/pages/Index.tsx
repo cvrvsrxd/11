@@ -29,11 +29,11 @@ const Index = () => {
     lossAmount: "-$214.15",
     profitDaysWin: "2",
     profitDaysLoss: "1",
-    username: "Esee",
+    username: "recrash",
     // Default to local placeholder to avoid CORS issues during export
     avatarUrl: "/placeholder.svg",
-    followers: "8.03K",
-    inviteCode: "2xf0NZRc",
+    followers: "3,81K",
+    inviteCode: "Pa40cKLh",
     // Local default background (safe for canvas export)
     backgroundUrl: defaultBg,
     backgroundType: "image" as "image" | "video",
