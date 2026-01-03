@@ -436,13 +436,31 @@ const Index = () => {
         const pnlTextY = pnlCenterY + pnlFontSize * 0.35;
 
         if (cardData.transparentPnlText) {
-          ctx.fillStyle = pnlBgColor;
-          ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
-          ctx.globalCompositeOperation = "destination-out";
-          ctx.fillStyle = "#000";
+          // Draw PNL block background with text "cut out" to reveal video behind
+          ctx.save();
+          // Create a path for the block minus the text
+          ctx.beginPath();
+          ctx.rect(contentLeft, pnlY, pnlW, pnlH);
+          // Measure text path for clipping
           ctx.textBaseline = "alphabetic";
-          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
-          ctx.globalCompositeOperation = "source-over";
+          ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          // We need to use a temporary canvas to create the knockout effect
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = canvas.height;
+          const tempCtx = tempCanvas.getContext("2d")!;
+          // Draw the PNL block on temp canvas
+          tempCtx.fillStyle = pnlBgColor;
+          tempCtx.fillRect(contentLeft, pnlY, pnlW, pnlH);
+          // Cut out the text
+          tempCtx.globalCompositeOperation = "destination-out";
+          tempCtx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          tempCtx.textBaseline = "alphabetic";
+          tempCtx.fillStyle = "#000";
+          tempCtx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
+          // Draw the temp canvas result onto main canvas
+          ctx.drawImage(tempCanvas, 0, 0);
+          ctx.restore();
         } else {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
