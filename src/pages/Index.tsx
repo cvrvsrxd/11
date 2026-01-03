@@ -13,12 +13,21 @@ const Index = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState<number | null>(null);
   const [exportFps, setExportFps] = useState<number>(30);
+  const [cardVersion, setCardVersion] = useState<1 | 2>(1);
   const [cardData, setCardData] = useState({
+    // Version 1 fields
     dateRange: "25/11/01 - 25/12/30",
     profitType: "Realized Profit",
     pnlValue: "-$9,164.45",
     txWin: "1,213",
     txLoss: "1,119",
+    // Version 2 fields
+    month: "January 2026",
+    winStreak: "2",
+    profitAmount: "+$2,730.46",
+    lossAmount: "-$214.15",
+    profitDaysWin: "2",
+    profitDaysLoss: "1",
     username: "Esee",
     // Default to local placeholder to avoid CORS issues during export
     avatarUrl: "/placeholder.svg",
@@ -216,14 +225,26 @@ const Index = () => {
         ctx.fillStyle = "rgba(255,255,255,0.5)";
         ctx.fillRect(sideMargin, dividerY, 1280 - sideMargin * 2, 1 * scale);
 
-        // Date Range
+        // Version-specific content
         const contentY = dividerY + 24 * scale;
         ctx.fillStyle = "#ffffff";
         ctx.font = `bold ${28 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.fillText(cardData.dateRange, sideMargin, contentY);
-
-        // Profit Type
-        ctx.fillText(cardData.profitType, sideMargin, contentY + 36 * scale);
+        
+        if (cardVersion === 1) {
+          // Version 1: Date Range + Profit Type
+          ctx.fillText(cardData.dateRange, sideMargin, contentY);
+          ctx.fillText(cardData.profitType, sideMargin, contentY + 36 * scale);
+        } else {
+          // Version 2: Month + Win Streak
+          ctx.fillText(cardData.month || "January 2026", sideMargin, contentY);
+          const streakY = contentY + 36 * scale;
+          ctx.fillStyle = "rgb(134,217,159)";
+          const streakDays = `${cardData.winStreak || "2"}Days`;
+          ctx.fillText(streakDays, sideMargin, streakY);
+          const streakDaysWidth = ctx.measureText(streakDays).width;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(" Win Streak", sideMargin + streakDaysWidth, streakY);
+        }
 
         // PNL Block
         const isNegative = cardData.pnlValue.startsWith("-");
@@ -238,7 +259,6 @@ const Index = () => {
         const pnlW = Math.max(230 * scale, textMetrics.width + pnlPx * 2);
 
         if (cardData.transparentPnlText) {
-          // Knockout effect - draw bg with text hole (simplified: just colored bg, text transparent)
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(sideMargin, pnlY, pnlW, pnlH);
           ctx.globalCompositeOperation = "destination-out";
@@ -254,24 +274,57 @@ const Index = () => {
           ctx.fillText(cardData.pnlValue, sideMargin + pnlPx, pnlY + pnlH / 2);
         }
 
-        // TXs
+        // Stats below PNL
         ctx.textBaseline = "top";
-        const txY = pnlY + pnlH + 24 * scale;
+        const statsY = pnlY + pnlH + 24 * scale;
         ctx.font = `bold ${20 * scale}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.fillText("TXs", sideMargin, txY);
-        
-        const txLabelWidth = 60 * scale + 12 * scale;
-        ctx.fillStyle = "rgb(134,217,159)";
-        ctx.fillText(cardData.txWin, sideMargin + txLabelWidth, txY);
-        
-        const winWidth = ctx.measureText(cardData.txWin).width;
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.fillText("/", sideMargin + txLabelWidth + winWidth, txY);
-        
-        const slashWidth = ctx.measureText("/").width;
-        ctx.fillStyle = "rgb(242,102,130)";
-        ctx.fillText(cardData.txLoss, sideMargin + txLabelWidth + winWidth + slashWidth, txY);
+
+        if (cardVersion === 1) {
+          // Version 1: TXs
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText("TXs", sideMargin, statsY);
+          
+          const txLabelWidth = 60 * scale + 12 * scale;
+          ctx.fillStyle = "rgb(134,217,159)";
+          ctx.fillText(cardData.txWin, sideMargin + txLabelWidth, statsY);
+          
+          const winWidth = ctx.measureText(cardData.txWin).width;
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText("/", sideMargin + txLabelWidth + winWidth, statsY);
+          
+          const slashWidth = ctx.measureText("/").width;
+          ctx.fillStyle = "rgb(242,102,130)";
+          ctx.fillText(cardData.txLoss, sideMargin + txLabelWidth + winWidth + slashWidth, statsY);
+        } else {
+          // Version 2: Profit, Loss, Profit Days
+          const labelWidth = 120 * scale;
+          const rowGap = 28 * scale;
+          
+          // Profit row
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText("Profit", sideMargin, statsY);
+          ctx.fillStyle = "rgb(134,217,159)";
+          ctx.fillText(cardData.profitAmount || "+$2,730.46", sideMargin + labelWidth, statsY);
+          
+          // Loss row
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText("Loss", sideMargin, statsY + rowGap);
+          ctx.fillStyle = "rgb(242,102,130)";
+          ctx.fillText(cardData.lossAmount || "-$214.15", sideMargin + labelWidth, statsY + rowGap);
+          
+          // Profit Days row
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText("Profit Days", sideMargin, statsY + rowGap * 2);
+          ctx.fillStyle = "rgb(134,217,159)";
+          const profitDaysWin = cardData.profitDaysWin || "2";
+          ctx.fillText(profitDaysWin, sideMargin + labelWidth, statsY + rowGap * 2);
+          const pdWinWidth = ctx.measureText(profitDaysWin).width;
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText("/", sideMargin + labelWidth + pdWinWidth, statsY + rowGap * 2);
+          const pdSlashWidth = ctx.measureText("/").width;
+          ctx.fillStyle = "rgb(242,102,130)";
+          ctx.fillText(cardData.profitDaysLoss || "1", sideMargin + labelWidth + pdWinWidth + pdSlashWidth, statsY + rowGap * 2);
+        }
 
         // Header icons and text (simplified - text only)
         ctx.fillStyle = "#ffffff";
@@ -464,7 +517,7 @@ const Index = () => {
       toast.error("Failed to export video");
       setIsRecording(false);
     }
-  }, [cardData, exportFps]);
+  }, [cardData, exportFps, cardVersion]);
 
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
@@ -477,7 +530,7 @@ const Index = () => {
           {/* Card Preview */}
           <div className="flex flex-col gap-4 items-center w-full xl:w-auto xl:sticky xl:top-8">
             <div className="overflow-x-auto">
-              <GmgnCard ref={cardRef} data={cardData} />
+              <GmgnCard ref={cardRef} data={cardData} version={cardVersion} />
             </div>
             {cardData.backgroundType === "video" ? (
               <div className="flex gap-3 flex-wrap justify-center">
@@ -511,9 +564,35 @@ const Index = () => {
             )}
           </div>
 
-          {/* Editor Panel */}
           <div className="w-full xl:w-[380px] bg-[hsl(var(--gmgn-card-100))] rounded-xl p-6 border border-[hsl(var(--gmgn-line-100))] space-y-4 flex-shrink-0">
             <h2 className="text-lg font-semibold text-[hsl(var(--gmgn-text-100))] mb-4">Edit Data</h2>
+
+            {/* Version Switcher */}
+            <div className="space-y-2">
+              <Label className="text-[hsl(var(--gmgn-text-200))]">Card Version</Label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCardVersion(1)}
+                  className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    cardVersion === 1
+                      ? "bg-[hsl(var(--gmgn-accent-100))] text-black"
+                      : "bg-[hsl(var(--gmgn-bg-200))] text-[hsl(var(--gmgn-text-200))] hover:bg-[hsl(var(--gmgn-hover-100))]"
+                  }`}
+                >
+                  V1: Date Range
+                </button>
+                <button
+                  onClick={() => setCardVersion(2)}
+                  className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    cardVersion === 2
+                      ? "bg-[hsl(var(--gmgn-accent-100))] text-black"
+                      : "bg-[hsl(var(--gmgn-bg-200))] text-[hsl(var(--gmgn-text-200))] hover:bg-[hsl(var(--gmgn-hover-100))]"
+                  }`}
+                >
+                  V2: Monthly
+                </button>
+              </div>
+            </div>
 
             <div className="flex items-center justify-between">
               <Label htmlFor="showUserProfile" className="text-[hsl(var(--gmgn-text-200))]">
@@ -548,25 +627,53 @@ const Index = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dateRange" className="text-[hsl(var(--gmgn-text-200))]">Date Range</Label>
-              <Input
-                id="dateRange"
-                value={cardData.dateRange}
-                onChange={(e) => handleChange("dateRange", e.target.value)}
-                className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
-              />
-            </div>
+            {cardVersion === 1 ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="dateRange" className="text-[hsl(var(--gmgn-text-200))]">Date Range</Label>
+                  <Input
+                    id="dateRange"
+                    value={cardData.dateRange}
+                    onChange={(e) => handleChange("dateRange", e.target.value)}
+                    className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="profitType" className="text-[hsl(var(--gmgn-text-200))]">Profit Type</Label>
-              <Input
-                id="profitType"
-                value={cardData.profitType}
-                onChange={(e) => handleChange("profitType", e.target.value)}
-                className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profitType" className="text-[hsl(var(--gmgn-text-200))]">Profit Type</Label>
+                  <Input
+                    id="profitType"
+                    value={cardData.profitType}
+                    onChange={(e) => handleChange("profitType", e.target.value)}
+                    className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="month" className="text-[hsl(var(--gmgn-text-200))]">Month</Label>
+                  <Input
+                    id="month"
+                    value={cardData.month}
+                    onChange={(e) => handleChange("month", e.target.value)}
+                    placeholder="January 2026"
+                    className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="winStreak" className="text-[hsl(var(--gmgn-text-200))]">Win Streak (Days)</Label>
+                  <Input
+                    id="winStreak"
+                    value={cardData.winStreak}
+                    onChange={(e) => handleChange("winStreak", e.target.value)}
+                    placeholder="2"
+                    className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="pnlValue" className="text-[hsl(var(--gmgn-text-200))]">PnL Value</Label>
@@ -579,26 +686,75 @@ const Index = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="txWin" className="text-[hsl(var(--gmgn-text-200))]">Win TXs</Label>
-                <Input
-                  id="txWin"
-                  value={cardData.txWin}
-                  onChange={(e) => handleChange("txWin", e.target.value)}
-                  className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
-                />
+            {cardVersion === 1 ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="txWin" className="text-[hsl(var(--gmgn-text-200))]">Win TXs</Label>
+                  <Input
+                    id="txWin"
+                    value={cardData.txWin}
+                    onChange={(e) => handleChange("txWin", e.target.value)}
+                    className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="txLoss" className="text-[hsl(var(--gmgn-text-200))]">Loss TXs</Label>
+                  <Input
+                    id="txLoss"
+                    value={cardData.txLoss}
+                    onChange={(e) => handleChange("txLoss", e.target.value)}
+                    className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="txLoss" className="text-[hsl(var(--gmgn-text-200))]">Loss TXs</Label>
-                <Input
-                  id="txLoss"
-                  value={cardData.txLoss}
-                  onChange={(e) => handleChange("txLoss", e.target.value)}
-                  className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
-                />
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profitAmount" className="text-[hsl(var(--gmgn-text-200))]">Profit</Label>
+                    <Input
+                      id="profitAmount"
+                      value={cardData.profitAmount}
+                      onChange={(e) => handleChange("profitAmount", e.target.value)}
+                      placeholder="+$2,730.46"
+                      className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lossAmount" className="text-[hsl(var(--gmgn-text-200))]">Loss</Label>
+                    <Input
+                      id="lossAmount"
+                      value={cardData.lossAmount}
+                      onChange={(e) => handleChange("lossAmount", e.target.value)}
+                      placeholder="-$214.15"
+                      className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profitDaysWin" className="text-[hsl(var(--gmgn-text-200))]">Profit Days (Win)</Label>
+                    <Input
+                      id="profitDaysWin"
+                      value={cardData.profitDaysWin}
+                      onChange={(e) => handleChange("profitDaysWin", e.target.value)}
+                      placeholder="2"
+                      className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profitDaysLoss" className="text-[hsl(var(--gmgn-text-200))]">Profit Days (Loss)</Label>
+                    <Input
+                      id="profitDaysLoss"
+                      value={cardData.profitDaysLoss}
+                      onChange={(e) => handleChange("profitDaysLoss", e.target.value)}
+                      placeholder="1"
+                      className="bg-[hsl(var(--gmgn-bg-200))] border-[hsl(var(--gmgn-line-100))] text-[hsl(var(--gmgn-text-100))]"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="username" className="text-[hsl(var(--gmgn-text-200))]">Username</Label>
