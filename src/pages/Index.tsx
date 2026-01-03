@@ -321,101 +321,109 @@ const Index = () => {
       const internalScale = 1280 / 1642;
       const s = (px: number) => px * internalScale;
 
-      // Draw function - renders everything directly on canvas
-      const drawFrame = () => {
-        // Clear canvas each frame
-        ctx.clearRect(0, 0, 1280, 720);
-        
-        // 1. Video frame
-        ctx.drawImage(exportVideo, 0, 0, 1280, 720);
+      // Build a static overlay ONCE (all UI elements + optional gradient + PNL block).
+      // Per-frame we only draw: video frame + this overlay.
+      const overlayCanvas = document.createElement("canvas");
+      overlayCanvas.width = 1280;
+      overlayCanvas.height = 720;
+      const overlayCtx = overlayCanvas.getContext("2d")!; // alpha=true by default (needed for knockout)
 
-        // 2. Gradient overlay (if enabled)
+      const renderOverlay = () => {
+        overlayCtx.clearRect(0, 0, 1280, 720);
+
+        // 1) Gradient overlay (if enabled)
         if (cardData.showGradientOverlay) {
-          const grad = ctx.createLinearGradient(0, 0, 1280, 0);
+          const grad = overlayCtx.createLinearGradient(0, 0, 1280, 0);
           grad.addColorStop(0, "rgba(0,0,0,0.9)");
           grad.addColorStop(0.45, "rgba(0,0,0,0.75)");
           grad.addColorStop(0.75, "rgba(0,0,0,0)");
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, 1280, 720);
+          overlayCtx.fillStyle = grad;
+          overlayCtx.fillRect(0, 0, 1280, 720);
         }
 
-        // 3. Text and UI elements
-        ctx.fillStyle = "#ffffff";
-        ctx.textBaseline = "top";
+        // 2) Text and UI elements
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.textBaseline = "top";
 
         // Header: height=152px, px=68px
         const headerHeight = s(152);
         const sideMargin = s(68);
-        
+
         // GMGN Logo (left side of header)
         if (gmgnLogoImg) {
           const logoHeight = s(72);
           const logoWidth = (265 / 72) * logoHeight; // maintain aspect ratio
           const logoY = (headerHeight - logoHeight) / 2;
-          ctx.drawImage(gmgnLogoImg, sideMargin, logoY, logoWidth, logoHeight);
+          overlayCtx.drawImage(gmgnLogoImg, sideMargin, logoY, logoWidth, logoHeight);
         }
 
         // Header icons and text (right side)
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `normal ${s(32)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.textBaseline = "middle";
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.font = `normal ${s(32)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        overlayCtx.textBaseline = "middle";
         const headerTextY = headerHeight / 2;
         const iconSize = s(40);
 
         // Layout from right: website text, globe icon, gap, twitter text, x icon
         const websiteText = cardData.websiteUrl;
         const twitterText = cardData.twitterHandle;
-        const websiteWidth = ctx.measureText(websiteText).width;
-        const twitterWidth = ctx.measureText(twitterText).width;
+        const websiteWidth = overlayCtx.measureText(websiteText).width;
+        const twitterWidth = overlayCtx.measureText(twitterText).width;
         const iconTextGap = s(8);
         const groupGap = s(60);
 
         // Draw website (rightmost)
         const websiteTextX = 1280 - sideMargin - websiteWidth;
-        ctx.fillText(websiteText, websiteTextX, headerTextY);
-        
+        overlayCtx.fillText(websiteText, websiteTextX, headerTextY);
+
         // Draw globe icon
         if (globeIconImg) {
-          ctx.drawImage(globeIconImg, websiteTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
+          overlayCtx.drawImage(
+            globeIconImg,
+            websiteTextX - iconTextGap - iconSize,
+            headerTextY - iconSize / 2,
+            iconSize,
+            iconSize
+          );
         }
-        
+
         // Draw twitter text
         const twitterTextX = websiteTextX - iconTextGap - iconSize - groupGap - twitterWidth;
-        ctx.fillText(twitterText, twitterTextX, headerTextY);
-        
+        overlayCtx.fillText(twitterText, twitterTextX, headerTextY);
+
         // Draw X icon
         if (xIconImg) {
-          ctx.drawImage(xIconImg, twitterTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
+          overlayCtx.drawImage(xIconImg, twitterTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
         }
 
         // Header divider (at bottom of header area)
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.fillRect(sideMargin, headerHeight, 1280 - sideMargin * 2, s(1));
+        overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+        overlayCtx.fillRect(sideMargin, headerHeight, 1280 - sideMargin * 2, s(1));
 
         // Main content: pt=212 from top (which is 60 below header)
         const contentY = s(212);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `bold ${s(56)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.textBaseline = "top";
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.font = `bold ${s(56)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        overlayCtx.textBaseline = "top";
         const contentLeft = s(64);
-        
+
         if (cardVersion === 1) {
           // Version 1: Date Range + Profit Type
-          ctx.fillText(cardData.dateRange, contentLeft, contentY);
-          ctx.fillText(cardData.profitType, contentLeft, contentY + s(56 + 16));
+          overlayCtx.fillText(cardData.dateRange, contentLeft, contentY);
+          overlayCtx.fillText(cardData.profitType, contentLeft, contentY + s(56 + 16));
         } else {
           // Version 2: Month + Win Streak
-          ctx.fillText(cardData.month || "January 2026", contentLeft, contentY);
+          overlayCtx.fillText(cardData.month || "January 2026", contentLeft, contentY);
           const streakY = contentY + s(56 + 8);
-          ctx.fillStyle = "rgb(134,217,159)";
+          overlayCtx.fillStyle = "rgb(134,217,159)";
           const streakDays = `${cardData.winStreak || "2"}Days`;
-          ctx.fillText(streakDays, contentLeft, streakY);
-          const streakDaysWidth = ctx.measureText(streakDays).width;
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
+          overlayCtx.fillText(streakDays, contentLeft, streakY);
+          const streakDaysWidth = overlayCtx.measureText(streakDays).width;
+          overlayCtx.fillStyle = "#ffffff";
+          overlayCtx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
         }
 
-        // PNL Block: height=120, min-width=500, px=20
+        // PNL Block
         const isNegative = cardData.pnlValue.startsWith("-");
         const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
         const pnlY =
@@ -427,99 +435,82 @@ const Index = () => {
         const pnlPx = s(20);
         const pnlMinW = s(500);
 
-        ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        const textMetrics = ctx.measureText(cardData.pnlValue);
+        overlayCtx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        const textMetrics = overlayCtx.measureText(cardData.pnlValue);
         const pnlW = Math.max(pnlMinW, textMetrics.width + pnlPx * 2);
 
         // Match DOM preview vertical centering (SVG uses y=50% + dy=0.35em)
         const pnlCenterY = pnlY + pnlH / 2;
         const pnlTextY = pnlCenterY + pnlFontSize * 0.35;
 
+        overlayCtx.fillStyle = pnlBgColor;
+        overlayCtx.fillRect(contentLeft, pnlY, pnlW, pnlH);
+
         if (cardData.transparentPnlText) {
-          // Draw PNL block background with text "cut out" to reveal video behind
-          ctx.save();
-          // Create a path for the block minus the text
-          ctx.beginPath();
-          ctx.rect(contentLeft, pnlY, pnlW, pnlH);
-          // Measure text path for clipping
-          ctx.textBaseline = "alphabetic";
-          ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          // We need to use a temporary canvas to create the knockout effect
-          const tempCanvas = document.createElement("canvas");
-          tempCanvas.width = canvas.width;
-          tempCanvas.height = canvas.height;
-          const tempCtx = tempCanvas.getContext("2d")!;
-          // Draw the PNL block on temp canvas
-          tempCtx.fillStyle = pnlBgColor;
-          tempCtx.fillRect(contentLeft, pnlY, pnlW, pnlH);
-          // Cut out the text
-          tempCtx.globalCompositeOperation = "destination-out";
-          tempCtx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          tempCtx.textBaseline = "alphabetic";
-          tempCtx.fillStyle = "#000";
-          tempCtx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
-          // Draw the temp canvas result onto main canvas
-          ctx.drawImage(tempCanvas, 0, 0);
-          ctx.restore();
+          // Knockout: remove text from the overlay so the video shows through.
+          overlayCtx.save();
+          overlayCtx.globalCompositeOperation = "destination-out";
+          overlayCtx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          overlayCtx.textBaseline = "alphabetic";
+          overlayCtx.fillStyle = "#000";
+          overlayCtx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
+          overlayCtx.restore();
         } else {
-          ctx.fillStyle = pnlBgColor;
-          ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
-          ctx.fillStyle = "#000000";
-          ctx.textBaseline = "alphabetic";
-          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
+          overlayCtx.fillStyle = "#000000";
+          overlayCtx.textBaseline = "alphabetic";
+          overlayCtx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
         }
 
-
         // Stats below PNL
-        ctx.textBaseline = "top";
+        overlayCtx.textBaseline = "top";
         const statsY = pnlY + pnlH + s(40);
-        ctx.font = `bold ${s(42)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        overlayCtx.font = `bold ${s(42)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
 
         if (cardVersion === 1) {
           // Version 1: TXs
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText("TXs", contentLeft, statsY);
-          
+          overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+          overlayCtx.fillText("TXs", contentLeft, statsY);
+
           const txLabelWidth = s(120) + s(12);
-          ctx.fillStyle = "rgb(134,217,159)";
-          ctx.fillText(cardData.txWin, contentLeft + txLabelWidth, statsY);
-          
-          const winWidth = ctx.measureText(cardData.txWin).width;
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText("/", contentLeft + txLabelWidth + winWidth, statsY);
-          
-          const slashWidth = ctx.measureText("/").width;
-          ctx.fillStyle = "rgb(242,102,130)";
-          ctx.fillText(cardData.txLoss, contentLeft + txLabelWidth + winWidth + slashWidth, statsY);
+          overlayCtx.fillStyle = "rgb(134,217,159)";
+          overlayCtx.fillText(cardData.txWin, contentLeft + txLabelWidth, statsY);
+
+          const winWidth = overlayCtx.measureText(cardData.txWin).width;
+          overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+          overlayCtx.fillText("/", contentLeft + txLabelWidth + winWidth, statsY);
+
+          const slashWidth = overlayCtx.measureText("/").width;
+          overlayCtx.fillStyle = "rgb(242,102,130)";
+          overlayCtx.fillText(cardData.txLoss, contentLeft + txLabelWidth + winWidth + slashWidth, statsY);
         } else {
           // Version 2: Profit, Loss, Profit Days
           const labelWidth = s(240);
           const rowGap = s(24 + 56);
-          
+
           // Profit row
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText("Profit", contentLeft, statsY);
-          ctx.fillStyle = "rgb(134,217,159)";
-          ctx.fillText("+" + (cardData.profitAmount || "$2,730.46"), contentLeft + labelWidth, statsY);
-          
+          overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+          overlayCtx.fillText("Profit", contentLeft, statsY);
+          overlayCtx.fillStyle = "rgb(134,217,159)";
+          overlayCtx.fillText("+" + (cardData.profitAmount || "$2,730.46"), contentLeft + labelWidth, statsY);
+
           // Loss row
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText("Loss", contentLeft, statsY + rowGap);
-          ctx.fillStyle = "rgb(242,102,130)";
-          ctx.fillText("-" + (cardData.lossAmount || "$214.15"), contentLeft + labelWidth, statsY + rowGap);
-          
+          overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+          overlayCtx.fillText("Loss", contentLeft, statsY + rowGap);
+          overlayCtx.fillStyle = "rgb(242,102,130)";
+          overlayCtx.fillText("-" + (cardData.lossAmount || "$214.15"), contentLeft + labelWidth, statsY + rowGap);
+
           // Profit Days row
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText("Profit Days", contentLeft, statsY + rowGap * 2);
-          ctx.fillStyle = "rgb(134,217,159)";
+          overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+          overlayCtx.fillText("Profit Days", contentLeft, statsY + rowGap * 2);
+          overlayCtx.fillStyle = "rgb(134,217,159)";
           const profitDaysWin = cardData.profitDaysWin || "2";
-          ctx.fillText(profitDaysWin, contentLeft + labelWidth, statsY + rowGap * 2);
-          const pdWinWidth = ctx.measureText(profitDaysWin).width;
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText("/", contentLeft + labelWidth + pdWinWidth, statsY + rowGap * 2);
-          const pdSlashWidth = ctx.measureText("/").width;
-          ctx.fillStyle = "rgb(242,102,130)";
-          ctx.fillText(cardData.profitDaysLoss || "1", contentLeft + labelWidth + pdWinWidth + pdSlashWidth, statsY + rowGap * 2);
+          overlayCtx.fillText(profitDaysWin, contentLeft + labelWidth, statsY + rowGap * 2);
+          const pdWinWidth = overlayCtx.measureText(profitDaysWin).width;
+          overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+          overlayCtx.fillText("/", contentLeft + labelWidth + pdWinWidth, statsY + rowGap * 2);
+          const pdSlashWidth = overlayCtx.measureText("/").width;
+          overlayCtx.fillStyle = "rgb(242,102,130)";
+          overlayCtx.fillText(cardData.profitDaysLoss || "1", contentLeft + labelWidth + pdWinWidth + pdSlashWidth, statsY + rowGap * 2);
         }
 
         // Footer - bottom=28px, px=68px
@@ -527,15 +518,15 @@ const Index = () => {
         const footerBottom = 720 - s(28);
 
         // Invite code
-        ctx.font = `normal ${s(28)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.textBaseline = "bottom";
-        const inviteCodeWidth = ctx.measureText(cardData.inviteCode).width;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(cardData.inviteCode, footerRight - inviteCodeWidth, footerBottom);
-        
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        const inviteLabelWidth = ctx.measureText("Invite Code").width;
-        ctx.fillText("Invite Code", footerRight - inviteCodeWidth - s(16) - inviteLabelWidth, footerBottom);
+        overlayCtx.font = `normal ${s(28)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        overlayCtx.textBaseline = "bottom";
+        const inviteCodeWidth = overlayCtx.measureText(cardData.inviteCode).width;
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.fillText(cardData.inviteCode, footerRight - inviteCodeWidth, footerBottom);
+
+        overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
+        const inviteLabelWidth = overlayCtx.measureText("Invite Code").width;
+        overlayCtx.fillText("Invite Code", footerRight - inviteCodeWidth - s(16) - inviteLabelWidth, footerBottom);
 
         // User profile pill
         if (cardData.showUserProfile) {
@@ -544,55 +535,73 @@ const Index = () => {
           const pillPadLeft = s(10);
           const pillPadRight = s(20);
           const avatarSize = s(48);
-          
-          ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          const usernameWidth = ctx.measureText(cardData.username).width;
-           ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-           const followersWidth = ctx.measureText(cardData.followers).width;
-           const xSmallSize = s(32);
-           
-           const pillContentWidth = avatarSize + s(12) + usernameWidth + s(12) + s(3) + s(8) + xSmallSize + s(4) + followersWidth;
-           const pillW = pillPadLeft + pillContentWidth + pillPadRight;
-           const pillX = footerRight - pillW;
 
-           // Pill background
-           ctx.fillStyle = "#000000";
-           ctx.beginPath();
-           ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
-           ctx.fill();
+          overlayCtx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          const usernameWidth = overlayCtx.measureText(cardData.username).width;
+          overlayCtx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          const followersWidth = overlayCtx.measureText(cardData.followers).width;
+          const xSmallSize = s(32);
 
-           // Avatar
-           if (avatarImg) {
-             ctx.save();
-             ctx.beginPath();
-             ctx.arc(pillX + pillPadLeft + avatarSize / 2, pillY + pillH / 2, avatarSize / 2, 0, Math.PI * 2);
-             ctx.clip();
-             ctx.drawImage(avatarImg, pillX + pillPadLeft, pillY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
-             ctx.restore();
-           }
+          const pillContentWidth =
+            avatarSize +
+            s(12) +
+            usernameWidth +
+            s(12) +
+            s(3) +
+            s(8) +
+            xSmallSize +
+            s(4) +
+            followersWidth;
+          const pillW = pillPadLeft + pillContentWidth + pillPadRight;
+          const pillX = footerRight - pillW;
 
-           // Username
-           ctx.fillStyle = "#ffffff";
-           ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-           ctx.textBaseline = "middle";
-           ctx.fillText(cardData.username, pillX + pillPadLeft + avatarSize + s(12), pillY + pillH / 2);
+          // Pill background
+          overlayCtx.fillStyle = "#000000";
+          overlayCtx.beginPath();
+          overlayCtx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+          overlayCtx.fill();
 
-           // Divider
-           const divX = pillX + pillPadLeft + avatarSize + s(12) + usernameWidth + s(12);
-           ctx.fillStyle = "#ffffff";
-           ctx.fillRect(divX, pillY + (pillH - s(32)) / 2, s(3), s(32));
+          // Avatar
+          if (avatarImg) {
+            overlayCtx.save();
+            overlayCtx.beginPath();
+            overlayCtx.arc(pillX + pillPadLeft + avatarSize / 2, pillY + pillH / 2, avatarSize / 2, 0, Math.PI * 2);
+            overlayCtx.clip();
+            overlayCtx.drawImage(avatarImg, pillX + pillPadLeft, pillY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
+            overlayCtx.restore();
+          }
 
-           // X icon (followers)
-           const xSmallX = divX + s(3) + s(8);
-           if (xIconImg) {
-             ctx.drawImage(xIconImg, xSmallX, pillY + (pillH - xSmallSize) / 2, xSmallSize, xSmallSize);
-           }
+          // Username
+          overlayCtx.fillStyle = "#ffffff";
+          overlayCtx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          overlayCtx.textBaseline = "middle";
+          overlayCtx.fillText(cardData.username, pillX + pillPadLeft + avatarSize + s(12), pillY + pillH / 2);
 
-           // Followers
-           ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-           ctx.fillText(cardData.followers, xSmallX + xSmallSize + s(4), pillY + pillH / 2);
-         }
+          // Divider
+          const divX = pillX + pillPadLeft + avatarSize + s(12) + usernameWidth + s(12);
+          overlayCtx.fillStyle = "#ffffff";
+          overlayCtx.fillRect(divX, pillY + (pillH - s(32)) / 2, s(3), s(32));
 
+          // X icon (followers)
+          const xSmallX = divX + s(3) + s(8);
+          if (xIconImg) {
+            overlayCtx.drawImage(xIconImg, xSmallX, pillY + (pillH - xSmallSize) / 2, xSmallSize, xSmallSize);
+          }
+
+          // Followers
+          overlayCtx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+          overlayCtx.fillText(cardData.followers, xSmallX + xSmallSize + s(4), pillY + pillH / 2);
+        }
+      };
+
+      // Render overlay once before recording.
+      renderOverlay();
+
+      // Draw function - per-frame (fast)
+      const drawFrame = () => {
+        ctx.clearRect(0, 0, 1280, 720);
+        ctx.drawImage(exportVideo, 0, 0, 1280, 720);
+        ctx.drawImage(overlayCanvas, 0, 0);
       };
       // Setup MediaRecorder with canvas stream at selected FPS
       const canvasStream = canvas.captureStream(exportFps);
