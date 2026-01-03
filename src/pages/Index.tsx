@@ -517,35 +517,39 @@ const Index = () => {
 
         // Main content: pt=212 from top (which is 60 below header)
         const contentY = s(212);
-        overlayCtx.fillStyle = "#ffffff";
-        overlayCtx.font = `bold ${s(56)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        overlayCtx.textBaseline = "top";
         const contentLeft = s(64);
+
+        const titleFontSize = s(56);
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.font = `bold ${titleFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        overlayCtx.textBaseline = "top";
+
+        const titleLineH = titleFontSize * 1.5;
+        let pnlYBase = contentY;
 
         if (cardVersion === 1) {
           // Version 1: Date Range + Profit Type
           overlayCtx.fillText(cardData.dateRange, contentLeft, contentY);
-          overlayCtx.fillText(cardData.profitType, contentLeft, contentY + s(56 + 16));
+          const profitTypeY = contentY + titleLineH + s(16);
+          overlayCtx.fillText(cardData.profitType, contentLeft, profitTypeY);
+          pnlYBase = profitTypeY + titleLineH + s(40);
         } else {
           // Version 2: Month + Win Streak
           overlayCtx.fillText(cardData.month || "January 2026", contentLeft, contentY);
-          // Line height ~1.2x font-size + margin = 56*1.2 + 8 ≈ 75
-          const streakY = contentY + s(75);
+          const streakY = contentY + titleLineH + s(8);
           overlayCtx.fillStyle = "rgb(134,217,159)";
           const streakDays = `${cardData.winStreak || "2"}Days`;
           overlayCtx.fillText(streakDays, contentLeft, streakY);
           const streakDaysWidth = overlayCtx.measureText(streakDays).width;
           overlayCtx.fillStyle = "#ffffff";
           overlayCtx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
+          pnlYBase = streakY + titleLineH + s(48);
         }
 
         // PNL Block
         const isNegative = cardData.pnlValue.startsWith("-");
         const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
-        const pnlY =
-          cardVersion === 1
-            ? contentY + s(56 + 16 + 56 + 40) // dateRange mb=16, profitType mb=40
-            : contentY + s(75 + 75 + 48); // 75px line height each + 48px margin
+        const pnlY = pnlYBase;
         const pnlH = s(120);
         const pnlFontSize = s(94);
         const pnlPx = s(20);
@@ -1014,32 +1018,37 @@ const Index = () => {
 
       // Main content
       const contentY = s(212);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `bold ${s(56)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-      ctx.textBaseline = "top";
       const contentLeft = s(64);
+
+      const titleFontSize = s(56);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${titleFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textBaseline = "top";
+
+      const titleLineH = titleFontSize * 1.5;
+      let pnlYBase = contentY;
 
       if (cardVersion === 1) {
         ctx.fillText(cardData.dateRange, contentLeft, contentY);
-        ctx.fillText(cardData.profitType, contentLeft, contentY + s(56 + 16));
+        const profitTypeY = contentY + titleLineH + s(16);
+        ctx.fillText(cardData.profitType, contentLeft, profitTypeY);
+        pnlYBase = profitTypeY + titleLineH + s(40);
       } else {
         ctx.fillText(cardData.month || "January 2026", contentLeft, contentY);
-        // Line height ~1.2x font-size + margin = 56*1.2 + 8 ≈ 75
-        const streakY = contentY + s(75);
+        const streakY = contentY + titleLineH + s(8);
         ctx.fillStyle = "rgb(134,217,159)";
         const streakDays = `${cardData.winStreak || "2"}Days`;
         ctx.fillText(streakDays, contentLeft, streakY);
         const streakDaysWidth = ctx.measureText(streakDays).width;
         ctx.fillStyle = "#ffffff";
         ctx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
+        pnlYBase = streakY + titleLineH + s(48);
       }
 
       // PNL Block
       const isNegative = cardData.pnlValue.startsWith("-");
       const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
-      const pnlY = cardVersion === 1
-        ? contentY + s(56 + 16 + 56 + 40)
-        : contentY + s(75 + 75 + 48);  // 75px line height each + 48px margin
+      const pnlY = pnlYBase;
       const pnlH = s(120);
       const pnlFontSize = s(94);
       const pnlPx = s(20);
