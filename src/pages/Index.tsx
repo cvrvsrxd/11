@@ -189,6 +189,122 @@ const Index = () => {
         });
       }
 
+      // Preload SVG icons as images
+      const loadSvgAsImage = (svgString: string): Promise<HTMLImageElement | null> => {
+        return new Promise((resolve) => {
+          const svg = new Blob([svgString], { type: "image/svg+xml" });
+          const url = URL.createObjectURL(svg);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(null);
+          };
+          img.src = url;
+        });
+      };
+
+      // GMGN Logo SVG
+      const gmgnLogoSvg = `<svg viewBox="0 0 265 72" fill="none" xmlns="http://www.w3.org/2000/svg" width="265" height="72">
+        <g clip-path="url(#clip0_gmgn)">
+          <path d="M31.5 22.5H27V13.5H22.5V9H31.5V22.5ZM54 13.5H49.5V9H58.5V22.5H54V13.5Z" fill="white"/>
+          <path d="M13.5 27H22.5V31.5H9V27H4.5V22.5H13.5V27Z" fill="#D5F86B"/>
+          <path d="M31.5 9H22.5V4.5H31.5V9Z" fill="#D5F86B"/>
+          <path d="M58.5 9H49.5V4.5H58.5V9Z" fill="#D5F86B"/>
+          <path d="M27 36V40.5H13.5V36H27ZM27 22.5H22.5V13.5H27V22.5ZM54 22.5H49.5V13.5H54V22.5Z" fill="black"/>
+          <path d="M40.5 49.5H36V54H40.5V49.5Z" fill="#DFC855"/>
+          <path d="M45 49.5H40.5V54H45V49.5Z" fill="#DFC855"/>
+          <path d="M36 54H31.5V58.5H36V54Z" fill="#DFC855"/>
+          <path d="M40.5 54H36V58.5H40.5V54Z" fill="#DFC855"/>
+          <path d="M45 54H40.5V58.5H45V54Z" fill="#DFC855"/>
+          <path d="M49.5 54H45V58.5H49.5V54Z" fill="#DFC855"/>
+          <path d="M36 58.5H31.5V63H36V58.5Z" fill="#DFC855"/>
+          <path d="M40.5 58.5H36V63H40.5V58.5Z" fill="#DFC855"/>
+          <path d="M45 58.5H40.5V63H45V58.5Z" fill="#DFC855"/>
+          <path d="M49.5 58.5H45V63H49.5V58.5Z" fill="#DFC855"/>
+          <path d="M63 58.5H58.5V63H63V58.5Z" fill="#457F2C"/>
+          <path d="M31.5 63H27V67.5H31.5V63Z" fill="#A3E050"/>
+          <path d="M36 63H31.5V67.5H36V63Z" fill="#DFC855"/>
+          <path d="M40.5 63H36V67.5H40.5V63Z" fill="#DFC855"/>
+          <path d="M45 63H40.5V67.5H45V63Z" fill="#DFC855"/>
+          <path d="M49.5 63H45V67.5H49.5V63Z" fill="#DFC855"/>
+          <path d="M31.5 67.5H27V72H31.5V67.5Z" fill="#A3E050"/>
+          <path d="M36 67.5H31.5V72H36V67.5Z" fill="#DFC855"/>
+          <path d="M40.5 67.5H36V72H40.5V67.5Z" fill="#DFC855"/>
+          <path d="M45 67.5H40.5V72H45V67.5Z" fill="#DFC855"/>
+          <path d="M49.5 67.5H45V72H49.5V67.5Z" fill="#DFC855"/>
+          <path d="M54 63H58.5V72H49.5V54H54V63Z" fill="#A3E050"/>
+          <path d="M49.5 54H45V49.5H49.5V54Z" fill="#A3E050"/>
+          <path d="M36 18H45V22.5H67.5V27H63V36H58.5V40.5H54V45H45V49.5H36V45H31.5V40.5H27V36H4.5V27H9V31.5H22.5V22.5H31.5V4.5H36V18Z" fill="#A3E050"/>
+          <path d="M63 9H58.5V4.5H63V9Z" fill="#A3E050"/>
+          <path d="M31.5 4.5H22.5V0H31.5V4.5Z" fill="#A3E050"/>
+          <path d="M58.5 4.5H49.5V0H58.5V4.5Z" fill="#A3E050"/>
+          <path d="M27 72H22.5V63H27V72Z" fill="#5DA040"/>
+          <path d="M58.5 63H63V72H58.5V63Z" fill="#5DA040"/>
+          <path d="M31.5 63H27V54H31.5V63Z" fill="#5DA040"/>
+          <path d="M58.5 63H54V54H58.5V63Z" fill="#5DA040"/>
+          <path d="M31.5 45H36V54H31.5V49.5H27V45H18V40.5H31.5V45Z" fill="#5DA040"/>
+          <path d="M67.5 40.5H63V45H58.5V49.5H54V54H49.5V49.5H45V45H54V40.5H58.5V36H63V27H67.5V40.5Z" fill="#5DA040"/>
+          <path d="M13.5 40.5H4.5V36H13.5V40.5Z" fill="#5DA040"/>
+          <path d="M22.5 27H18V22.5H22.5V27Z" fill="#5DA040"/>
+          <path d="M49.5 22.5H45V18H49.5V22.5Z" fill="#5DA040"/>
+          <path d="M63 22.5H58.5V9H63V22.5Z" fill="#5DA040"/>
+          <path d="M22.5 72H18V63H22.5V72Z" fill="#457F2C"/>
+          <path d="M63 63H67.5V72H63V63Z" fill="#457F2C"/>
+          <path d="M27 63H22.5V54H27V63Z" fill="#457F2C"/>
+          <path d="M63 58.5H58.5V54H63V58.5Z" fill="#457F2C"/>
+          <path d="M31.5 54H27V49.5H31.5V54Z" fill="#457F2C"/>
+          <path d="M58.5 54H54V49.5H58.5V54Z" fill="#457F2C"/>
+          <path d="M27 49.5H18V45H27V49.5Z" fill="#457F2C"/>
+          <path d="M63 49.5H58.5V45H63V49.5Z" fill="#457F2C"/>
+          <path d="M18 45H4.5V40.5H18V45Z" fill="#457F2C"/>
+          <path d="M67.5 45H63V40.5H67.5V45Z" fill="#457F2C"/>
+          <path d="M4.5 40.5H0V22.5H4.5V40.5Z" fill="#457F2C"/>
+          <path d="M72 40.5H67.5V22.5H72V40.5Z" fill="#457F2C"/>
+          <path d="M18 27H13.5V22.5H18V27Z" fill="#457F2C"/>
+          <path d="M13.5 22.5H4.5V18H13.5V22.5Z" fill="#457F2C"/>
+          <path d="M22.5 22.5H18V4.5H22.5V22.5Z" fill="#457F2C"/>
+          <path d="M67.5 22.5H63V4.5H67.5V22.5Z" fill="#457F2C"/>
+          <path d="M40.5 13.5H45V4.5H49.5V18H36V4.5H40.5V13.5Z" fill="#457F2C"/>
+          <path d="M36 4.5H31.5V0H36V4.5Z" fill="#457F2C"/>
+          <path d="M63 4.5H58.5V0H63V4.5Z" fill="#457F2C"/>
+        </g>
+        <path d="M225 54.9805V15.6055H236.25V21.2305H241.875V26.8555H247.5V32.4805H253.125V15.6055H264.375V54.9805H253.125V43.7305H247.5V38.1055H241.875V32.4805H236.25V54.9805H225Z" fill="white"/>
+        <path d="M191.25 54.9805V49.3555H185.625V43.7305H180V26.8555H185.625V21.2305H191.25V15.6055H219.375V21.2305H196.875V26.8555H191.25V43.7305H196.875V49.3555H208.125V38.1055H202.5V32.4805H219.375V54.9805H191.25Z" fill="white"/>
+        <path d="M135 54.9805V15.6055H146.25V21.2305H151.875V26.8555H157.5V21.2305H163.125V15.6055H174.375V54.9805H163.125V32.4805H157.5V43.7305H151.875V32.4805H146.25V54.9805H135Z" fill="white"/>
+        <path d="M101.25 54.9805V49.3555H95.625V43.7305H90V26.8555H95.625V21.2305H101.25V15.6055H129.375V21.2305H106.875V26.8555H101.25V43.7305H106.875V49.3555H118.125V38.1055H112.5V32.4805H129.375V54.9805H101.25Z" fill="white"/>
+        <defs>
+          <clipPath id="clip0_gmgn">
+            <rect width="72" height="72" fill="white"/>
+          </clipPath>
+        </defs>
+      </svg>`;
+
+      // X (Twitter) Icon SVG
+      const xIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="white" width="32" height="32">
+        <path d="M8.9695 2h1.357L7.3619 5.3884l3.4877 4.6108H8.1188L5.9799 7.2028 3.5326 9.9992H2.1748l3.171-3.6243L2 2h2.8001l1.9334 2.556zm-.4762 7.187h.752L4.3914 2.7695h-.8068z"/>
+      </svg>`;
+
+      // Globe Icon SVG
+      const globeIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="white" width="32" height="32">
+        <path d="M1.2805 5.4972h2.2257c.0871-1.7077.6106-3.102 1.2575-4.0795-1.865.5015-3.2758 2.1111-3.4832 4.0795M6.02 1.4314c-.6827.7522-1.398 2.1522-1.5066 4.0658h3.063c-.1038-2.021-.826-3.352-1.5564-4.0658m1.555 5.0715H4.517c.0602.8633.27 1.707.5648 2.4398.2683.6668.5967 1.2165.9246 1.6007.7603-.814 1.4615-2.1564 1.5686-4.0405m-2.7784 4.0882c-.2429-.3799-.4623-.8115-.648-1.273-.338-.8403-.578-1.8126-.6396-2.8152H1.2805c.2086 1.98 1.6349 3.5969 3.516 4.0882m2.4763-.0193c1.8457-.5132 3.2385-2.1141 3.4445-4.0689h-2.135c-.0876 1.718-.619 3.0805-1.3094 4.0689m3.4445-5.0746C10.514 3.5666 9.1529 1.981 7.3411 1.4478c.6597.9513 1.161 2.305 1.2422 4.0494zM.2484 6C.2484 2.8242 2.823.2496 5.999.2496s5.7506 2.5746 5.7506 5.7505c0 3.176-2.5746 5.7506-5.7505 5.7506C2.823 11.7506.2483 9.176.2483 6"/>
+      </svg>`;
+
+      // User icon SVG for followers
+      const userIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="32" height="32">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>`;
+
+      const [gmgnLogoImg, xIconImg, globeIconImg, userIconImg] = await Promise.all([
+        loadSvgAsImage(gmgnLogoSvg),
+        loadSvgAsImage(xIconSvg),
+        loadSvgAsImage(globeIconSvg),
+        loadSvgAsImage(userIconSvg),
+      ]);
+
       // Create canvas - all rendering happens here
       const canvas = document.createElement("canvas");
       canvas.width = 1280;
@@ -196,7 +312,6 @@ const Index = () => {
       const ctx = canvas.getContext("2d", { alpha: false })!;
       if (!ctx) throw new Error("Could not get canvas context");
 
-      // Scale factor for 1280x720 from base 750x420
       // Scale: 1280x720 output from 1642x932 design base
       const internalScale = 1280 / 1642;
       const s = (px: number) => px * internalScale;
@@ -227,6 +342,47 @@ const Index = () => {
         const headerHeight = s(152);
         const sideMargin = s(68);
         
+        // GMGN Logo (left side of header)
+        if (gmgnLogoImg) {
+          const logoHeight = s(72);
+          const logoWidth = (265 / 72) * logoHeight; // maintain aspect ratio
+          const logoY = (headerHeight - logoHeight) / 2;
+          ctx.drawImage(gmgnLogoImg, sideMargin, logoY, logoWidth, logoHeight);
+        }
+
+        // Header icons and text (right side)
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `normal ${s(32)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textBaseline = "middle";
+        const headerTextY = headerHeight / 2;
+        const iconSize = s(32);
+        
+        // Layout from right: website text, globe icon, gap, twitter text, x icon
+        const websiteText = cardData.websiteUrl;
+        const twitterText = cardData.twitterHandle;
+        const websiteWidth = ctx.measureText(websiteText).width;
+        const twitterWidth = ctx.measureText(twitterText).width;
+        const iconTextGap = s(8);
+        const groupGap = s(32);
+
+        // Draw website (rightmost)
+        const websiteTextX = 1280 - sideMargin - websiteWidth;
+        ctx.fillText(websiteText, websiteTextX, headerTextY);
+        
+        // Draw globe icon
+        if (globeIconImg) {
+          ctx.drawImage(globeIconImg, websiteTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
+        }
+        
+        // Draw twitter text
+        const twitterTextX = websiteTextX - iconTextGap - iconSize - groupGap - twitterWidth;
+        ctx.fillText(twitterText, twitterTextX, headerTextY);
+        
+        // Draw X icon
+        if (xIconImg) {
+          ctx.drawImage(xIconImg, twitterTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
+        }
+
         // Header divider (at bottom of header area)
         ctx.fillStyle = "rgba(255,255,255,0.5)";
         ctx.fillRect(sideMargin, headerHeight, 1280 - sideMargin * 2, s(1));
@@ -235,6 +391,7 @@ const Index = () => {
         const contentY = s(212);
         ctx.fillStyle = "#ffffff";
         ctx.font = `bold ${s(56)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textBaseline = "top";
         const contentLeft = s(64);
         
         if (cardVersion === 1) {
@@ -266,20 +423,24 @@ const Index = () => {
         const textMetrics = ctx.measureText(cardData.pnlValue);
         const pnlW = Math.max(pnlMinW, textMetrics.width + pnlPx * 2);
 
+        // Calculate vertical center for text - use actualBoundingBoxAscent/Descent for precise centering
+        const textHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent;
+        const textCenterY = pnlY + pnlH / 2 + textMetrics.actualBoundingBoxAscent - textHeight / 2;
+
         if (cardData.transparentPnlText) {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
           ctx.globalCompositeOperation = "destination-out";
           ctx.fillStyle = "#000";
-          ctx.textBaseline = "middle";
-          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlY + pnlH / 2);
+          ctx.textBaseline = "alphabetic";
+          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, textCenterY);
           ctx.globalCompositeOperation = "source-over";
         } else {
           ctx.fillStyle = pnlBgColor;
           ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
           ctx.fillStyle = "#000000";
-          ctx.textBaseline = "middle";
-          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlY + pnlH / 2);
+          ctx.textBaseline = "alphabetic";
+          ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, textCenterY);
         }
 
         // Stats below PNL
@@ -334,22 +495,6 @@ const Index = () => {
           ctx.fillText(cardData.profitDaysLoss || "1", contentLeft + labelWidth + pdWinWidth + pdSlashWidth, statsY + rowGap * 2);
         }
 
-        // Header icons and text
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `normal ${s(32)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-        ctx.textBaseline = "middle";
-        const headerTextY = s(76); // center of 152px header
-        
-        // Twitter handle + website (right side)
-        const twitterText = cardData.twitterHandle;
-        const websiteText = cardData.websiteUrl;
-        const websiteWidth = ctx.measureText(websiteText).width;
-        const twitterWidth = ctx.measureText(twitterText).width;
-        const iconGap = s(60);
-        
-        ctx.fillText(websiteText, 1280 - sideMargin - websiteWidth, headerTextY);
-        ctx.fillText(twitterText, 1280 - sideMargin - websiteWidth - iconGap - twitterWidth, headerTextY);
-
         // Footer - bottom=28px, px=68px
         const footerRight = 1280 - sideMargin;
         const footerBottom = 720 - s(28);
@@ -377,8 +522,9 @@ const Index = () => {
           const usernameWidth = ctx.measureText(cardData.username).width;
           ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
           const followersWidth = ctx.measureText(cardData.followers).width;
+          const userIconSize = s(32);
           
-          const pillContentWidth = avatarSize + s(12) + usernameWidth + s(12) + s(3) + s(8) + s(32) + s(4) + followersWidth;
+          const pillContentWidth = avatarSize + s(12) + usernameWidth + s(12) + s(3) + s(8) + userIconSize + s(4) + followersWidth;
           const pillW = pillPadLeft + pillContentWidth + pillPadRight;
           const pillX = footerRight - pillW;
 
@@ -409,9 +555,15 @@ const Index = () => {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(divX, pillY + (pillH - s(32)) / 2, s(3), s(32));
 
+          // User icon for followers
+          const userIconX = divX + s(3) + s(8);
+          if (userIconImg) {
+            ctx.drawImage(userIconImg, userIconX, pillY + (pillH - userIconSize) / 2, userIconSize, userIconSize);
+          }
+
           // Followers
           ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
-          ctx.fillText(cardData.followers, divX + s(3) + s(8) + s(32) + s(4), pillY + pillH / 2);
+          ctx.fillText(cardData.followers, userIconX + userIconSize + s(4), pillY + pillH / 2);
         }
       };
       // Setup MediaRecorder with canvas stream at selected FPS
