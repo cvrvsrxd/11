@@ -131,7 +131,7 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1, v
           ) : (
             <>
               {/* Version 2: Month */}
-              <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${8 * scale}px` }}>{data.month}</p>
+              <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>{data.month}</p>
               {/* Version 2: Win Streak */}
               <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>
                 <span className="text-[rgb(134,217,159)]">{data.winStreak}Days</span>
@@ -141,13 +141,13 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1, v
           )}
 
           {/* PNL Value */}
-          <div style={{ marginBottom: `${24 * scale}px` }}>
+          <div style={{ marginBottom: `${20 * scale}px` }}>
             {(() => {
-              const h = 55 * scale;
-              const fontSize = 43 * scale;
+              const h = 60 * scale;
+              const fontSize = 47 * scale;
               const px = 10 * scale;
               const textWidth = fontSize * 0.62 * data.pnlValue.length;
-              const w = Math.max(230 * scale, textWidth + px * 2);
+              const w = Math.max(250 * scale, textWidth + px * 2);
 
               return (
                 <div
@@ -215,7 +215,7 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1, v
 
           {version === 1 ? (
             /* Version 1: TXs Stats */
-            <div className="flex items-center" style={{ gap: `${12 * scale}px`, fontSize: `${20 * scale}px` }}>
+            <div className="flex items-center" style={{ gap: `${12 * scale}px`, fontSize: `${21 * scale}px` }}>
               <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${60 * scale}px` }}>TXs</span>
               <div className="flex items-center">
                 <span className="text-[rgb(134,217,159)]">{data.txWin}</span>
@@ -225,16 +225,16 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1, v
             </div>
           ) : (
             /* Version 2: Profit, Loss, Profit Days */
-            <div className="flex flex-col" style={{ gap: `${12 * scale}px`, fontSize: `${20 * scale}px` }}>
-              <div className="flex items-center" style={{ gap: `${12 * scale}px` }}>
+            <div className="flex flex-col" style={{ gap: `${12 * scale}px`, fontSize: `${21 * scale}px` }}>
+              <div className="flex items-center" style={{ gap: `${6 * scale}px`, height: `${28 * scale}px` }}>
                 <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${120 * scale}px` }}>Profit</span>
                 <span className="text-[rgb(134,217,159)]">{data.profitAmount}</span>
               </div>
-              <div className="flex items-center" style={{ gap: `${12 * scale}px` }}>
+              <div className="flex items-center" style={{ gap: `${6 * scale}px`, height: `${28 * scale}px` }}>
                 <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${120 * scale}px` }}>Loss</span>
                 <span className="text-[rgb(242,102,130)]">{data.lossAmount}</span>
               </div>
-              <div className="flex items-center" style={{ gap: `${12 * scale}px` }}>
+              <div className="flex items-center" style={{ gap: `${6 * scale}px`, height: `${28 * scale}px` }}>
                 <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${120 * scale}px` }}>Profit Days</span>
                 <div className="flex items-center">
                   <span className="text-[rgb(134,217,159)]">{data.profitDaysWin}</span>
