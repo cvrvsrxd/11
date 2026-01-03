@@ -735,35 +735,41 @@ const Index = () => {
         ctx.drawImage(overlayCanvas, 0, 0);
       };
 
-      // Setup MediaRecorder with canvas stream at selected FPS
-      const canvasStream = canvas.captureStream(recordFps);
+      // Use requestVideoFrameCallback when possible (best chance to avoid micro-stutter)
+      const supportsRVFC = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
+
+      // Setup MediaRecorder with canvas stream
+      // NOTE: with RVFC, letting the canvas stream be "paint-driven" often avoids duplicated frames.
+      const canvasStream = supportsRVFC ? canvas.captureStream() : canvas.captureStream(recordFps);
       const combinedStream = new MediaStream();
       canvasStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
 
-      // Audio capture (best effort)
+      // Audio capture (best effort) — prefer captureStream (lower overhead) before WebAudio
       let audioAdded = false;
-      try {
+
+      const exportVideoStream: MediaStream | undefined =
+        (exportVideo as any).captureStream?.() || (exportVideo as any).mozCaptureStream?.();
+      exportVideoStream?.getAudioTracks().forEach((t: MediaStreamTrack) => {
+        combinedStream.addTrack(t);
+        audioAdded = true;
+      });
+
+      let audioCtx: AudioContext | null = null;
+      if (!audioAdded) {
+        try {
           const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-          const audioCtx = new AudioCtx();
+          audioCtx = new AudioCtx();
           await audioCtx.resume();
           const source = audioCtx.createMediaElementSource(exportVideo);
           const dest = audioCtx.createMediaStreamDestination();
           source.connect(dest);
           dest.stream.getAudioTracks().forEach((t) => {
-          combinedStream.addTrack(t);
-          audioAdded = true;
-        });
-      } catch (e) {
-        console.warn("WebAudio capture failed:", e);
-      }
-
-      if (!audioAdded) {
-        const exportVideoStream: MediaStream | undefined =
-          (exportVideo as any).captureStream?.() || (exportVideo as any).mozCaptureStream?.();
-        exportVideoStream?.getAudioTracks().forEach((t: MediaStreamTrack) => {
-          combinedStream.addTrack(t);
-          audioAdded = true;
-        });
+            combinedStream.addTrack(t);
+            audioAdded = true;
+          });
+        } catch (e) {
+          console.warn("WebAudio capture failed:", e);
+        }
       }
 
       if (!audioAdded) toast.warning("Audio capture failed (browser limitation)");
@@ -841,9 +847,8 @@ const Index = () => {
         }
       };
 
-      // Use requestVideoFrameCallback for frame-accurate capture (no micro-freezes)
-      // This API fires exactly when a new video frame is presented by the decoder
-      const supportsRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+      // Use requestVideoFrameCallback for frame-accurate capture
+      // (fires when a new video frame is presented by the decoder)
 
       if (supportsRVFC) {
         useRVFC = true;
@@ -869,8 +874,8 @@ const Index = () => {
         await exportVideo.play();
         
         let lastFrameTime = 0;
-        const targetFrameInterval = 1000 / exportFps;
-        
+        const targetFrameInterval = 1000 / recordFps;
+
         const captureFrameRAF = (timestamp: number) => {
           if (exportVideo.ended || exportVideo.paused) {
             return;
