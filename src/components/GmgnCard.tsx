@@ -20,6 +20,19 @@ interface GmgnCardData {
   showUserProfile: boolean;
   showGradientOverlay: boolean;
   transparentPnlText: boolean;
+  // Version 2 fields
+  month?: string;
+  winStreak?: string;
+  profitAmount?: string;
+  lossAmount?: string;
+  profitDaysWin?: string;
+  profitDaysLoss?: string;
+}
+
+interface GmgnCardProps {
+  data: GmgnCardData;
+  scale?: number;
+  version?: 1 | 2;
 }
 
 interface GmgnCardProps {
@@ -27,7 +40,7 @@ interface GmgnCardProps {
   scale?: number;
 }
 
-const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 }, ref) => {
+const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1, version = 1 }, ref) => {
   const isNegative = data.pnlValue.startsWith("-");
   const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
 
@@ -108,11 +121,24 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col justify-center" style={{ padding: `${24 * scale}px ${68 * scale}px` }}>
-          {/* Date Range */}
-          <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${8 * scale}px` }}>{data.dateRange}</p>
-
-          {/* Profit Type */}
-          <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>{data.profitType}</p>
+          {version === 1 ? (
+            <>
+              {/* Version 1: Date Range */}
+              <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${8 * scale}px` }}>{data.dateRange}</p>
+              {/* Version 1: Profit Type */}
+              <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>{data.profitType}</p>
+            </>
+          ) : (
+            <>
+              {/* Version 2: Month */}
+              <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${8 * scale}px` }}>{data.month}</p>
+              {/* Version 2: Win Streak */}
+              <p style={{ fontSize: `${28 * scale}px`, marginBottom: `${24 * scale}px` }}>
+                <span className="text-[rgb(134,217,159)]">{data.winStreak}Days</span>
+                <span> Win Streak</span>
+              </p>
+            </>
+          )}
 
           {/* PNL Value */}
           <div style={{ marginBottom: `${24 * scale}px` }}>
@@ -187,15 +213,37 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1 },
             })()}
           </div>
 
-          {/* TXs Stats */}
-          <div className="flex items-center" style={{ gap: `${12 * scale}px`, fontSize: `${20 * scale}px` }}>
-            <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${60 * scale}px` }}>TXs</span>
-            <div className="flex items-center">
-              <span className="text-[rgb(134,217,159)]">{data.txWin}</span>
-              <span className="text-[hsl(var(--gmgn-text-300))]">/</span>
-              <span className="text-[rgb(242,102,130)]">{data.txLoss}</span>
+          {version === 1 ? (
+            /* Version 1: TXs Stats */
+            <div className="flex items-center" style={{ gap: `${12 * scale}px`, fontSize: `${20 * scale}px` }}>
+              <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${60 * scale}px` }}>TXs</span>
+              <div className="flex items-center">
+                <span className="text-[rgb(134,217,159)]">{data.txWin}</span>
+                <span className="text-[hsl(var(--gmgn-text-300))]">/</span>
+                <span className="text-[rgb(242,102,130)]">{data.txLoss}</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Version 2: Profit, Loss, Profit Days */
+            <div className="flex flex-col" style={{ gap: `${12 * scale}px`, fontSize: `${20 * scale}px` }}>
+              <div className="flex items-center" style={{ gap: `${12 * scale}px` }}>
+                <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${120 * scale}px` }}>Profit</span>
+                <span className="text-[rgb(134,217,159)]">{data.profitAmount}</span>
+              </div>
+              <div className="flex items-center" style={{ gap: `${12 * scale}px` }}>
+                <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${120 * scale}px` }}>Loss</span>
+                <span className="text-[rgb(242,102,130)]">{data.lossAmount}</span>
+              </div>
+              <div className="flex items-center" style={{ gap: `${12 * scale}px` }}>
+                <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${120 * scale}px` }}>Profit Days</span>
+                <div className="flex items-center">
+                  <span className="text-[rgb(134,217,159)]">{data.profitDaysWin}</span>
+                  <span className="text-[hsl(var(--gmgn-text-300))]">/</span>
+                  <span className="text-[rgb(242,102,130)]">{data.profitDaysLoss}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer - absolute positioned at bottom right */}
