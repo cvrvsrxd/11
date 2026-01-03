@@ -524,25 +524,28 @@ const Index = () => {
         overlayCtx.font = `bold ${titleFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
         overlayCtx.textBaseline = "top";
 
-        const titleLineH = titleFontSize * 1.5;
+        // line-height: normal ≈ 1.2 for sans-serif
+        const titleLineH = titleFontSize * 1.2;
         let pnlYBase = contentY;
 
         if (cardVersion === 1) {
           // Version 1: Date Range + Profit Type
           overlayCtx.fillText(cardData.dateRange, contentLeft, contentY);
-          const profitTypeY = contentY + titleLineH + s(16);
+          const profitTypeY = contentY + titleLineH;
           overlayCtx.fillText(cardData.profitType, contentLeft, profitTypeY);
-          pnlYBase = profitTypeY + titleLineH + s(40);
+          // margin-bottom of text block = 48px before PNL
+          pnlYBase = profitTypeY + titleLineH + s(48);
         } else {
-          // Version 2: Month + Win Streak
+          // Version 2: Month + Win Streak (flex-col, no gap)
           overlayCtx.fillText(cardData.month || "January 2026", contentLeft, contentY);
-          const streakY = contentY + titleLineH + s(8);
+          const streakY = contentY + titleLineH;
           overlayCtx.fillStyle = "rgb(134,217,159)";
           const streakDays = `${cardData.winStreak || "2"}Days`;
           overlayCtx.fillText(streakDays, contentLeft, streakY);
           const streakDaysWidth = overlayCtx.measureText(streakDays).width;
           overlayCtx.fillStyle = "#ffffff";
           overlayCtx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
+          // margin-bottom of text block = 48px before PNL
           pnlYBase = streakY + titleLineH + s(48);
         }
 
@@ -1025,23 +1028,26 @@ const Index = () => {
       ctx.font = `bold ${titleFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.textBaseline = "top";
 
-      const titleLineH = titleFontSize * 1.5;
+      // line-height: normal ≈ 1.2 for sans-serif
+      const titleLineH = titleFontSize * 1.2;
       let pnlYBase = contentY;
 
       if (cardVersion === 1) {
         ctx.fillText(cardData.dateRange, contentLeft, contentY);
-        const profitTypeY = contentY + titleLineH + s(16);
+        const profitTypeY = contentY + titleLineH;
         ctx.fillText(cardData.profitType, contentLeft, profitTypeY);
-        pnlYBase = profitTypeY + titleLineH + s(40);
+        // margin-bottom of text block = 48px before PNL
+        pnlYBase = profitTypeY + titleLineH + s(48);
       } else {
         ctx.fillText(cardData.month || "January 2026", contentLeft, contentY);
-        const streakY = contentY + titleLineH + s(8);
+        const streakY = contentY + titleLineH;
         ctx.fillStyle = "rgb(134,217,159)";
         const streakDays = `${cardData.winStreak || "2"}Days`;
         ctx.fillText(streakDays, contentLeft, streakY);
         const streakDaysWidth = ctx.measureText(streakDays).width;
         ctx.fillStyle = "#ffffff";
         ctx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
+        // margin-bottom of text block = 48px before PNL
         pnlYBase = streakY + titleLineH + s(48);
       }
 
