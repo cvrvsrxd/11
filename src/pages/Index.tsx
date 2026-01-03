@@ -643,9 +643,16 @@ const Index = () => {
 
       let stopTimer = 0;
       let drawIntervalId: number = 0;
+      let useRVFC = false; // Track if using requestVideoFrameCallback
 
       const cleanupAll = () => {
-        clearInterval(drawIntervalId);
+        if (useRVFC && drawIntervalId) {
+          try {
+            (exportVideo as any).cancelVideoFrameCallback(drawIntervalId);
+          } catch {}
+        } else {
+          cancelAnimationFrame(drawIntervalId);
+        }
         clearTimeout(stopTimer);
         cleanupExportVideo();
         setRecordProgress(null);
@@ -678,26 +685,63 @@ const Index = () => {
         if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
       }, Math.ceil(exportVideo.duration * 1000) + 500);
 
-      toast.info("Recording in real-time... please wait");
+      toast.info("Recording... please wait");
 
       mediaRecorder.start();
-      await exportVideo.play();
 
-      // FIXED FPS using setInterval (NOT requestAnimationFrame)
-      const frameTime = 1000 / exportFps;
-      
-      drawIntervalId = window.setInterval(() => {
-        if (exportVideo.ended || exportVideo.paused) {
-          clearInterval(drawIntervalId);
-          return;
-        }
+      // Use requestVideoFrameCallback for frame-accurate capture (no micro-freezes)
+      // This API fires exactly when a new video frame is presented by the decoder
+      const supportsRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+
+      if (supportsRVFC) {
+        useRVFC = true;
         
-        drawFrame();
+        const captureFrame = () => {
+          if (exportVideo.ended || exportVideo.paused) {
+            return;
+          }
+          
+          drawFrame();
+          
+          if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
+            setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
+          }
+          
+          // Request next frame callback and update the ID for cleanup
+          drawIntervalId = (exportVideo as any).requestVideoFrameCallback(captureFrame);
+        };
         
-        if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
-          setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
-        }
-      }, frameTime);
+        // Start the frame capture loop
+        drawIntervalId = (exportVideo as any).requestVideoFrameCallback(captureFrame);
+        
+        await exportVideo.play();
+      } else {
+        // Fallback: requestAnimationFrame with timestamp-based frame skipping
+        await exportVideo.play();
+        
+        let lastFrameTime = 0;
+        const targetFrameInterval = 1000 / exportFps;
+        
+        const captureFrameRAF = (timestamp: number) => {
+          if (exportVideo.ended || exportVideo.paused) {
+            return;
+          }
+          
+          // Only draw if enough time has passed for the next frame
+          if (timestamp - lastFrameTime >= targetFrameInterval) {
+            drawFrame();
+            lastFrameTime = timestamp;
+            
+            if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
+              setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
+            }
+          }
+          
+          drawIntervalId = requestAnimationFrame(captureFrameRAF);
+        };
+        
+        drawIntervalId = requestAnimationFrame(captureFrameRAF);
+      }
 
     } catch (error) {
       console.error("Error exporting video:", error);
