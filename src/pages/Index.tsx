@@ -515,8 +515,8 @@ const Index = () => {
         overlayCtx.fillStyle = "rgba(255,255,255,0.5)";
         overlayCtx.fillRect(sideMargin, headerHeight, 1280 - sideMargin * 2, s(1));
 
-        // Main content: pt=212 from top (which is 60 below header)
-        const contentY = s(212);
+        // Main content: pt=112 from top (as per original)
+        const contentY = s(112);
         const contentLeft = s(64);
 
         const titleFontSize = s(56);
@@ -1019,8 +1019,8 @@ const Index = () => {
       ctx.fillStyle = "rgba(255,255,255,0.5)";
       ctx.fillRect(sideMargin, headerHeight, 1280 - sideMargin * 2, s(1));
 
-      // Main content
-      const contentY = s(212);
+      // Main content: pt=112 from top (as per original)
+      const contentY = s(112);
       const contentLeft = s(64);
 
       const titleFontSize = s(56);
