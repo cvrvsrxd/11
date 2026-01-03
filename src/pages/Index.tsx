@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ImageDown } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 const Index = () => {
@@ -901,6 +901,294 @@ const Index = () => {
     }
   }, [cardData, exportFps, matchSourceFps, cardVersion]);
 
+  const handleDownloadOverlayPng = useCallback(async () => {
+    try {
+      // Preload fonts
+      if ("fonts" in document && document.fonts) {
+        await Promise.all([
+          document.fonts.load("700 80px Geist"),
+          document.fonts.load("600 40px Geist"),
+          document.fonts.load("500 40px Geist"),
+          document.fonts.load("400 32px Geist"),
+          document.fonts.ready,
+        ]);
+      }
+
+      // Preload avatar
+      let avatarImg: HTMLImageElement | null = null;
+      if (cardData.showUserProfile && cardData.avatarUrl) {
+        avatarImg = await new Promise<HTMLImageElement>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null as any);
+          img.src = cardData.avatarUrl;
+        });
+      }
+
+      // SVG loader
+      const loadSvgAsImage = (svgString: string): Promise<HTMLImageElement | null> => {
+        return new Promise((resolve) => {
+          const svg = new Blob([svgString], { type: "image/svg+xml" });
+          const url = URL.createObjectURL(svg);
+          const img = new Image();
+          img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+          img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+          img.src = url;
+        });
+      };
+
+      const gmgnLogoSvg = `<svg viewBox="0 0 265 72" fill="none" xmlns="http://www.w3.org/2000/svg" width="265" height="72"><g clip-path="url(#clip0_gmgn)"><path d="M31.5 22.5H27V13.5H22.5V9H31.5V22.5ZM54 13.5H49.5V9H58.5V22.5H54V13.5Z" fill="white"/><path d="M13.5 27H22.5V31.5H9V27H4.5V22.5H13.5V27Z" fill="#D5F86B"/><path d="M31.5 9H22.5V4.5H31.5V9Z" fill="#D5F86B"/><path d="M58.5 9H49.5V4.5H58.5V9Z" fill="#D5F86B"/><path d="M27 36V40.5H13.5V36H27ZM27 22.5H22.5V13.5H27V22.5ZM54 22.5H49.5V13.5H54V22.5Z" fill="black"/><path d="M40.5 49.5H36V54H40.5V49.5Z" fill="#DFC855"/><path d="M45 49.5H40.5V54H45V49.5Z" fill="#DFC855"/><path d="M36 54H31.5V58.5H36V54Z" fill="#DFC855"/><path d="M40.5 54H36V58.5H40.5V54Z" fill="#DFC855"/><path d="M45 54H40.5V58.5H45V54Z" fill="#DFC855"/><path d="M49.5 54H45V58.5H49.5V54Z" fill="#DFC855"/><path d="M36 58.5H31.5V63H36V58.5Z" fill="#DFC855"/><path d="M40.5 58.5H36V63H40.5V58.5Z" fill="#DFC855"/><path d="M45 58.5H40.5V63H45V58.5Z" fill="#DFC855"/><path d="M49.5 58.5H45V63H49.5V58.5Z" fill="#DFC855"/><path d="M63 58.5H58.5V63H63V58.5Z" fill="#457F2C"/><path d="M31.5 63H27V67.5H31.5V63Z" fill="#A3E050"/><path d="M36 63H31.5V67.5H36V63Z" fill="#DFC855"/><path d="M40.5 63H36V67.5H40.5V63Z" fill="#DFC855"/><path d="M45 63H40.5V67.5H45V63Z" fill="#DFC855"/><path d="M49.5 63H45V67.5H49.5V63Z" fill="#DFC855"/><path d="M31.5 67.5H27V72H31.5V67.5Z" fill="#A3E050"/><path d="M36 67.5H31.5V72H36V67.5Z" fill="#DFC855"/><path d="M40.5 67.5H36V72H40.5V67.5Z" fill="#DFC855"/><path d="M45 67.5H40.5V72H45V67.5Z" fill="#DFC855"/><path d="M49.5 67.5H45V72H49.5V67.5Z" fill="#DFC855"/><path d="M54 63H58.5V72H49.5V54H54V63Z" fill="#A3E050"/><path d="M49.5 54H45V49.5H49.5V54Z" fill="#A3E050"/><path d="M36 18H45V22.5H67.5V27H63V36H58.5V40.5H54V45H45V49.5H36V45H31.5V40.5H27V36H4.5V27H9V31.5H22.5V22.5H31.5V4.5H36V18Z" fill="#A3E050"/><path d="M63 9H58.5V4.5H63V9Z" fill="#A3E050"/><path d="M31.5 4.5H22.5V0H31.5V4.5Z" fill="#A3E050"/><path d="M58.5 4.5H49.5V0H58.5V4.5Z" fill="#A3E050"/><path d="M27 72H22.5V63H27V72Z" fill="#5DA040"/><path d="M58.5 63H63V72H58.5V63Z" fill="#5DA040"/><path d="M31.5 63H27V54H31.5V63Z" fill="#5DA040"/><path d="M58.5 63H54V54H58.5V63Z" fill="#5DA040"/><path d="M31.5 45H36V54H31.5V49.5H27V45H18V40.5H31.5V45Z" fill="#5DA040"/><path d="M67.5 40.5H63V45H58.5V49.5H54V54H49.5V49.5H45V45H54V40.5H58.5V36H63V27H67.5V40.5Z" fill="#5DA040"/><path d="M13.5 40.5H4.5V36H13.5V40.5Z" fill="#5DA040"/><path d="M22.5 27H18V22.5H22.5V27Z" fill="#5DA040"/><path d="M49.5 22.5H45V18H49.5V22.5Z" fill="#5DA040"/><path d="M63 22.5H58.5V9H63V22.5Z" fill="#5DA040"/><path d="M22.5 72H18V63H22.5V72Z" fill="#457F2C"/><path d="M63 63H67.5V72H63V63Z" fill="#457F2C"/><path d="M27 63H22.5V54H27V63Z" fill="#457F2C"/><path d="M63 58.5H58.5V54H63V58.5Z" fill="#457F2C"/><path d="M31.5 54H27V49.5H31.5V54Z" fill="#457F2C"/><path d="M58.5 54H54V49.5H58.5V54Z" fill="#457F2C"/><path d="M27 49.5H18V45H27V49.5Z" fill="#457F2C"/><path d="M63 49.5H58.5V45H63V49.5Z" fill="#457F2C"/><path d="M18 45H4.5V40.5H18V45Z" fill="#457F2C"/><path d="M67.5 45H63V40.5H67.5V45Z" fill="#457F2C"/><path d="M4.5 40.5H0V22.5H4.5V40.5Z" fill="#457F2C"/><path d="M72 40.5H67.5V22.5H72V40.5Z" fill="#457F2C"/><path d="M18 27H13.5V22.5H18V27Z" fill="#457F2C"/><path d="M13.5 22.5H4.5V18H13.5V22.5Z" fill="#457F2C"/><path d="M22.5 22.5H18V4.5H22.5V22.5Z" fill="#457F2C"/><path d="M67.5 22.5H63V4.5H67.5V22.5Z" fill="#457F2C"/><path d="M40.5 13.5H45V4.5H49.5V18H36V4.5H40.5V13.5Z" fill="#457F2C"/><path d="M36 4.5H31.5V0H36V4.5Z" fill="#457F2C"/><path d="M63 4.5H58.5V0H63V4.5Z" fill="#457F2C"/></g><path d="M225 54.9805V15.6055H236.25V21.2305H241.875V26.8555H247.5V32.4805H253.125V15.6055H264.375V54.9805H253.125V43.7305H247.5V38.1055H241.875V32.4805H236.25V54.9805H225Z" fill="white"/><path d="M191.25 54.9805V49.3555H185.625V43.7305H180V26.8555H185.625V21.2305H191.25V15.6055H219.375V21.2305H196.875V26.8555H191.25V43.7305H196.875V49.3555H208.125V38.1055H202.5V32.4805H219.375V54.9805H191.25Z" fill="white"/><path d="M135 54.9805V15.6055H146.25V21.2305H151.875V26.8555H157.5V21.2305H163.125V15.6055H174.375V54.9805H163.125V32.4805H157.5V43.7305H151.875V32.4805H146.25V54.9805H135Z" fill="white"/><path d="M101.25 54.9805V49.3555H95.625V43.7305H90V26.8555H95.625V21.2305H101.25V15.6055H129.375V21.2305H106.875V26.8555H101.25V43.7305H106.875V49.3555H118.125V38.1055H112.5V32.4805H129.375V54.9805H101.25Z" fill="white"/><defs><clipPath id="clip0_gmgn"><rect width="72" height="72" fill="white"/></clipPath></defs></svg>`;
+      const xIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="white" width="32" height="32"><path d="M8.9695 2h1.357L7.3619 5.3884l3.4877 4.6108H8.1188L5.9799 7.2028 3.5326 9.9992H2.1748l3.171-3.6243L2 2h2.8001l1.9334 2.556zm-.4762 7.187h.752L4.3914 2.7695h-.8068z"/></svg>`;
+      const globeIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="white" width="32" height="32"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 1a5 5 0 1 0 0 10A5 5 0 0 0 6 1ZM4.063 2.408A4.014 4.014 0 0 0 2.1 5h1.416c.063-.96.251-1.822.52-2.502.036-.091.074-.18.114-.265a4.058 4.058 0 0 0-.087.175Zm-.547 3.592H2.1a4.014 4.014 0 0 0 1.963 2.592 3.991 3.991 0 0 1-.114-.265c-.269-.68-.457-1.542-.52-2.502l.087.175Zm1.003 0H5.5v2.403c-.457-.079-.872-.438-1.19-1.02-.205-.379-.368-.848-.473-1.383l.682-.175V6Zm1.981 0H7.453c-.105.535-.268 1.004-.473 1.383-.318.582-.733.941-1.19 1.02V6l.71.175V6Zm1.437 0c-.063.96-.251 1.822-.52 2.502-.036.091-.074.18-.114.265A4.014 4.014 0 0 0 9.9 6H8.484l-.547.175V6Zm.547-1H8.484c-.063-.96-.251-1.822-.52-2.502a3.991 3.991 0 0 0-.114-.265A4.014 4.014 0 0 1 9.9 5H8.484Zm-1.031 0H6.5V2.597c.457.079.872.438 1.19 1.02.205.379.368.848.473 1.383Zm-1.953 0V2.597c-.457.079-.872.438-1.19 1.02-.205.379-.368.848-.473 1.383H5.5Z"/></svg>`;
+
+      const [gmgnLogoImg, xIconImg, globeIconImg] = await Promise.all([
+        loadSvgAsImage(gmgnLogoSvg),
+        loadSvgAsImage(xIconSvg),
+        loadSvgAsImage(globeIconSvg),
+      ]);
+
+      // Create transparent canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = 1280;
+      canvas.height = 720;
+      const ctx = canvas.getContext("2d")!;
+
+      // Scale helper
+      const exportScale = 1280 / 1642;
+      const s = (v: number) => v * exportScale;
+
+      // Gradient overlay
+      if (cardData.showGradientOverlay) {
+        const grad = ctx.createLinearGradient(0, 0, s(600), 0);
+        grad.addColorStop(0, "rgba(0,0,0,0.85)");
+        grad.addColorStop(0.7, "rgba(0,0,0,0.3)");
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 1280, 720);
+      }
+
+      const sideMargin = s(68);
+      const headerHeight = s(152);
+      const headerTextY = headerHeight / 2;
+
+      // Logo
+      if (gmgnLogoImg) {
+        const logoW = s(179);
+        const logoH = s(48);
+        ctx.drawImage(gmgnLogoImg, sideMargin, headerTextY - logoH / 2, logoW, logoH);
+      }
+
+      // Header right (website + twitter)
+      ctx.fillStyle = "#ffffff";
+      const iconSize = s(32);
+      const iconTextGap = s(8);
+      const groupGap = s(24);
+
+      const twitterText = `@${cardData.twitterHandle}`;
+      const websiteText = cardData.websiteUrl;
+
+      ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textBaseline = "middle";
+      const twitterWidth = ctx.measureText(twitterText).width;
+      const websiteWidth = ctx.measureText(websiteText).width;
+
+      const websiteTextX = 1280 - sideMargin - websiteWidth;
+      ctx.fillText(websiteText, websiteTextX, headerTextY);
+
+      if (globeIconImg) {
+        ctx.drawImage(globeIconImg, websiteTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
+      }
+
+      const twitterTextX = websiteTextX - iconTextGap - iconSize - groupGap - twitterWidth;
+      ctx.fillText(twitterText, twitterTextX, headerTextY);
+
+      if (xIconImg) {
+        ctx.drawImage(xIconImg, twitterTextX - iconTextGap - iconSize, headerTextY - iconSize / 2, iconSize, iconSize);
+      }
+
+      // Header divider
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillRect(sideMargin, headerHeight, 1280 - sideMargin * 2, s(1));
+
+      // Main content
+      const contentY = s(212);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${s(56)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textBaseline = "top";
+      const contentLeft = s(64);
+
+      if (cardVersion === 1) {
+        ctx.fillText(cardData.dateRange, contentLeft, contentY);
+        ctx.fillText(cardData.profitType, contentLeft, contentY + s(56 + 16));
+      } else {
+        ctx.fillText(cardData.month || "January 2026", contentLeft, contentY);
+        const streakY = contentY + s(56 + 8);
+        ctx.fillStyle = "rgb(134,217,159)";
+        const streakDays = `${cardData.winStreak || "2"}Days`;
+        ctx.fillText(streakDays, contentLeft, streakY);
+        const streakDaysWidth = ctx.measureText(streakDays).width;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(" Win Streak", contentLeft + streakDaysWidth, streakY);
+      }
+
+      // PNL Block
+      const isNegative = cardData.pnlValue.startsWith("-");
+      const pnlBgColor = isNegative ? "rgb(242,102,130)" : "rgb(134,217,159)";
+      const pnlY = cardVersion === 1
+        ? contentY + s(56 + 16 + 56 + 40)
+        : contentY + s(56 + 8 + 56 + 48);
+      const pnlH = s(120);
+      const pnlFontSize = s(94);
+      const pnlPx = s(20);
+      const pnlMinW = s(500);
+
+      ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+      const textMetrics = ctx.measureText(cardData.pnlValue);
+      const pnlW = Math.max(pnlMinW, textMetrics.width + pnlPx * 2);
+
+      const pnlCenterY = pnlY + pnlH / 2;
+      const pnlTextY = pnlCenterY + pnlFontSize * 0.35;
+
+      ctx.fillStyle = pnlBgColor;
+      ctx.fillRect(contentLeft, pnlY, pnlW, pnlH);
+
+      if (cardData.transparentPnlText) {
+        // For transparent PNG, just don't draw text (shows through to transparency)
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.font = `bold ${pnlFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#000";
+        ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "#000000";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(cardData.pnlValue, contentLeft + pnlPx, pnlTextY);
+      }
+
+      // Stats below PNL
+      ctx.textBaseline = "top";
+      const statsY = pnlY + pnlH + s(40);
+      ctx.font = `bold ${s(42)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+
+      if (cardVersion === 1) {
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("TXs", contentLeft, statsY);
+        const txLabelWidth = s(120) + s(12);
+        ctx.fillStyle = "rgb(134,217,159)";
+        ctx.fillText(cardData.txWin, contentLeft + txLabelWidth, statsY);
+        const winWidth = ctx.measureText(cardData.txWin).width;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("/", contentLeft + txLabelWidth + winWidth, statsY);
+        const slashWidth = ctx.measureText("/").width;
+        ctx.fillStyle = "rgb(242,102,130)";
+        ctx.fillText(cardData.txLoss, contentLeft + txLabelWidth + winWidth + slashWidth, statsY);
+      } else {
+        const labelWidth = s(240);
+        const rowGap = s(24 + 56);
+
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("Profit", contentLeft, statsY);
+        ctx.fillStyle = "rgb(134,217,159)";
+        ctx.fillText("+" + (cardData.profitAmount || "$2,730.46"), contentLeft + labelWidth, statsY);
+
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("Loss", contentLeft, statsY + rowGap);
+        ctx.fillStyle = "rgb(242,102,130)";
+        ctx.fillText("-" + (cardData.lossAmount || "$214.15"), contentLeft + labelWidth, statsY + rowGap);
+
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("Profit Days", contentLeft, statsY + rowGap * 2);
+        ctx.fillStyle = "rgb(134,217,159)";
+        const profitDaysWin = cardData.profitDaysWin || "2";
+        ctx.fillText(profitDaysWin, contentLeft + labelWidth, statsY + rowGap * 2);
+        const pdWinWidth = ctx.measureText(profitDaysWin).width;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("/", contentLeft + labelWidth + pdWinWidth, statsY + rowGap * 2);
+        const pdSlashWidth = ctx.measureText("/").width;
+        ctx.fillStyle = "rgb(242,102,130)";
+        ctx.fillText(cardData.profitDaysLoss || "1", contentLeft + labelWidth + pdWinWidth + pdSlashWidth, statsY + rowGap * 2);
+      }
+
+      // Footer
+      const footerRight = 1280 - sideMargin;
+      const footerBottom = 720 - s(28);
+
+      ctx.font = `normal ${s(28)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textBaseline = "bottom";
+      const inviteCodeWidth = ctx.measureText(cardData.inviteCode).width;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(cardData.inviteCode, footerRight - inviteCodeWidth, footerBottom);
+
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      const inviteLabelWidth = ctx.measureText("Invite Code").width;
+      ctx.fillText("Invite Code", footerRight - inviteCodeWidth - s(16) - inviteLabelWidth, footerBottom);
+
+      // User profile pill
+      if (cardData.showUserProfile) {
+        const pillH = s(64);
+        const pillY = footerBottom - s(18) - pillH - s(28);
+        const pillPadLeft = s(10);
+        const pillPadRight = s(20);
+        const avatarSize = s(48);
+
+        ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        const usernameWidth = ctx.measureText(cardData.username).width;
+        ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        const followersWidth = ctx.measureText(cardData.followers).width;
+        const xSmallSize = s(32);
+
+        const pillContentWidth = avatarSize + s(12) + usernameWidth + s(12) + s(3) + s(8) + xSmallSize + s(4) + followersWidth;
+        const pillW = pillPadLeft + pillContentWidth + pillPadRight;
+        const pillX = footerRight - pillW;
+
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+        ctx.fill();
+
+        if (avatarImg) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(pillX + pillPadLeft + avatarSize / 2, pillY + pillH / 2, avatarSize / 2, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(avatarImg, pillX + pillPadLeft, pillY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
+          ctx.restore();
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `600 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.fillText(cardData.username, pillX + pillPadLeft + avatarSize + s(12), pillY + pillH / 2);
+
+        const divX = pillX + pillPadLeft + avatarSize + s(12) + usernameWidth + s(12);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(divX, pillY + (pillH - s(32)) / 2, s(3), s(32));
+
+        const xSmallX = divX + s(3) + s(8);
+        if (xIconImg) {
+          ctx.drawImage(xIconImg, xSmallX, pillY + (pillH - xSmallSize) / 2, xSmallSize, xSmallSize);
+        }
+
+        ctx.font = `500 ${s(36)}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.fillText(cardData.followers, xSmallX + xSmallSize + s(4), pillY + pillH / 2);
+      }
+
+      // Export as PNG
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `gmgn-overlay-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success("Overlay PNG downloaded! Size: 1280x720");
+    } catch (error) {
+      console.error("Error exporting overlay:", error);
+      toast.error("Failed to export overlay PNG");
+    }
+  }, [cardData, cardVersion]);
+
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
       <div className="max-w-[1200px] mx-auto">
@@ -936,6 +1224,10 @@ const Index = () => {
                 <Button onClick={handleDownloadPng} variant="outline" className="font-semibold px-6">
                   <Download className="w-4 h-4 mr-2" />
                   Download PNG
+                </Button>
+                <Button onClick={handleDownloadOverlayPng} variant="outline" className="font-semibold px-6">
+                  <ImageDown className="w-4 h-4 mr-2" />
+                  Overlay PNG
                 </Button>
               </div>
             ) : (
