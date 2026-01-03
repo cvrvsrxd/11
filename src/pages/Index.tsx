@@ -524,8 +524,8 @@ const Index = () => {
         overlayCtx.font = `bold ${titleFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
         overlayCtx.textBaseline = "top";
 
-        // line-height: normal ≈ 1.2 for sans-serif
-        const titleLineH = titleFontSize * 1.2;
+        // flex-col без gap: строки идут вплотную, line-height = font-size
+        const titleLineH = titleFontSize;
         let pnlYBase = contentY;
 
         if (cardVersion === 1) {
@@ -1028,8 +1028,8 @@ const Index = () => {
       ctx.font = `bold ${titleFontSize}px Geist, -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.textBaseline = "top";
 
-      // line-height: normal ≈ 1.2 for sans-serif
-      const titleLineH = titleFontSize * 1.2;
+      // flex-col без gap: строки идут вплотную, line-height = font-size
+      const titleLineH = titleFontSize;
       let pnlYBase = contentY;
 
       if (cardVersion === 1) {
