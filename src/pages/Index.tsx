@@ -13,6 +13,7 @@ const Index = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordProgress, setRecordProgress] = useState<number | null>(null);
   const [exportFps, setExportFps] = useState<number>(30);
+  const [matchSourceFps, setMatchSourceFps] = useState(true);
   const [cardVersion, setCardVersion] = useState<1 | 2>(1);
   const [cardData, setCardData] = useState({
     // Version 1 fields
@@ -176,6 +177,120 @@ const Index = () => {
         setIsRecording(false);
         return;
       }
+
+      // Best-effort: wait for first decoded frame so we know videoWidth/videoHeight
+      if (exportVideo.readyState < 2) {
+        await new Promise<void>((resolve, reject) => {
+          const onLoaded = () => { cleanup(); resolve(); };
+          const onError = () => { cleanup(); reject(new Error("Could not load video data")); };
+          const cleanup = () => {
+            exportVideo.removeEventListener("loadeddata", onLoaded);
+            exportVideo.removeEventListener("error", onError);
+          };
+          exportVideo.addEventListener("loadeddata", onLoaded);
+          exportVideo.addEventListener("error", onError);
+        });
+      }
+
+      // If the source is 30fps/VFR and you export at 60fps, it often *looks like* micro-freezes
+      // (because frames get duplicated). When enabled, we auto-match export FPS to source.
+      const detectSourceFps = async (v: HTMLVideoElement): Promise<number | null> => {
+        if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) return null;
+
+        const sampleMaxFrames = 60;
+        const sampleMaxMs = 1500;
+
+        const deltas: number[] = [];
+        let lastMediaTime: number | null = null;
+        let frames = 0;
+        let cbId = 0;
+        const start = performance.now();
+
+        try {
+          v.muted = true;
+          await v.play();
+        } catch {
+          return null;
+        }
+
+        const fps = await new Promise<number | null>((resolve) => {
+          const onFrame = (_now: number, meta: any) => {
+            const mediaTime = typeof meta?.mediaTime === "number" ? meta.mediaTime : null;
+            if (mediaTime !== null) {
+              if (lastMediaTime !== null) deltas.push(mediaTime - lastMediaTime);
+              lastMediaTime = mediaTime;
+              frames += 1;
+            }
+
+            if (frames >= sampleMaxFrames || performance.now() - start >= sampleMaxMs) {
+              try {
+                (v as any).cancelVideoFrameCallback(cbId);
+              } catch {}
+
+              const avgDt = deltas.length ? deltas.reduce((a, b) => a + b, 0) / deltas.length : 0;
+              resolve(avgDt > 0 ? 1 / avgDt : null);
+              return;
+            }
+
+            cbId = (v as any).requestVideoFrameCallback(onFrame);
+          };
+
+          cbId = (v as any).requestVideoFrameCallback(onFrame);
+        });
+
+        try { v.pause(); } catch {}
+        v.muted = false;
+
+        // Rewind back to start for the real recording pass
+        const targetTime = 0;
+        if (Math.abs(v.currentTime - targetTime) > 0.0001) {
+          v.currentTime = targetTime;
+          await new Promise<void>((resolve) => {
+            const onSeeked = () => { cleanup(); resolve(); };
+            const onError = () => { cleanup(); resolve(); };
+            const cleanup = () => {
+              v.removeEventListener("seeked", onSeeked);
+              v.removeEventListener("error", onError);
+            };
+            v.addEventListener("seeked", onSeeked);
+            v.addEventListener("error", onError);
+          });
+        }
+
+        return fps;
+      };
+
+      let recordFps = exportFps;
+      if (matchSourceFps) {
+        const detected = await detectSourceFps(exportVideo);
+        if (detected) {
+          recordFps = Math.max(1, Math.round(detected));
+          toast.info(`Detected source FPS ~${detected.toFixed(2)} → exporting at ${recordFps} FPS`);
+        }
+      }
+
+      const computeCoverCrop = (vw: number, vh: number) => {
+        const dw = 1280;
+        const dh = 720;
+        if (!vw || !vh) return { sx: 0, sy: 0, sw: dw, sh: dh, useCrop: false as const };
+
+        const srcRatio = vw / vh;
+        const dstRatio = dw / dh;
+
+        if (srcRatio > dstRatio) {
+          // Source is wider → crop left/right
+          const sw = vh * dstRatio;
+          const sx = (vw - sw) / 2;
+          return { sx, sy: 0, sw, sh: vh, useCrop: true as const };
+        }
+
+        // Source is taller → crop top/bottom
+        const sh = vw / dstRatio;
+        const sy = (vh - sh) / 2;
+        return { sx: 0, sy, sw: vw, sh, useCrop: true as const };
+      };
+
+      const coverCrop = computeCoverCrop(exportVideo.videoWidth, exportVideo.videoHeight);
 
       // Ensure Geist is loaded before we start drawing/recording (prevents text metric shifts)
       if ("fonts" in document && document.fonts) {
@@ -600,25 +715,41 @@ const Index = () => {
       // Draw function - per-frame (fast)
       const drawFrame = () => {
         ctx.clearRect(0, 0, 1280, 720);
-        ctx.drawImage(exportVideo, 0, 0, 1280, 720);
+
+        if (coverCrop.useCrop) {
+          ctx.drawImage(
+            exportVideo,
+            coverCrop.sx,
+            coverCrop.sy,
+            coverCrop.sw,
+            coverCrop.sh,
+            0,
+            0,
+            1280,
+            720
+          );
+        } else {
+          ctx.drawImage(exportVideo, 0, 0, 1280, 720);
+        }
+
         ctx.drawImage(overlayCanvas, 0, 0);
       };
+
       // Setup MediaRecorder with canvas stream at selected FPS
-      const canvasStream = canvas.captureStream(exportFps);
+      const canvasStream = canvas.captureStream(recordFps);
       const combinedStream = new MediaStream();
       canvasStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t));
 
       // Audio capture (best effort)
       let audioAdded = false;
       try {
-        const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-        const audioCtx = new AudioCtx();
-        await audioCtx.resume();
-        const source = audioCtx.createMediaElementSource(exportVideo);
-        const dest = audioCtx.createMediaStreamDestination();
-        source.connect(dest);
-        source.connect(audioCtx.destination); // Also play through speakers if needed
-        dest.stream.getAudioTracks().forEach((t) => {
+          const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+          const audioCtx = new AudioCtx();
+          await audioCtx.resume();
+          const source = audioCtx.createMediaElementSource(exportVideo);
+          const dest = audioCtx.createMediaStreamDestination();
+          source.connect(dest);
+          dest.stream.getAudioTracks().forEach((t) => {
           combinedStream.addTrack(t);
           audioAdded = true;
         });
@@ -698,6 +829,18 @@ const Index = () => {
 
       mediaRecorder.start();
 
+      // IMPORTANT: updating React state every frame can *cause* dropped frames.
+      // We throttle progress updates to keep the capture loop smooth.
+      let lastProgressUpdateMs = 0;
+      const maybeUpdateProgress = () => {
+        const now = performance.now();
+        if (now - lastProgressUpdateMs < 120) return;
+        lastProgressUpdateMs = now;
+        if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
+          setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
+        }
+      };
+
       // Use requestVideoFrameCallback for frame-accurate capture (no micro-freezes)
       // This API fires exactly when a new video frame is presented by the decoder
       const supportsRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
@@ -711,10 +854,7 @@ const Index = () => {
           }
           
           drawFrame();
-          
-          if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
-            setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
-          }
+          maybeUpdateProgress();
           
           // Request next frame callback and update the ID for cleanup
           drawIntervalId = (exportVideo as any).requestVideoFrameCallback(captureFrame);
@@ -740,10 +880,7 @@ const Index = () => {
           if (timestamp - lastFrameTime >= targetFrameInterval) {
             drawFrame();
             lastFrameTime = timestamp;
-            
-            if (Number.isFinite(exportVideo.duration) && exportVideo.duration > 0) {
-              setRecordProgress(Math.min(1, exportVideo.currentTime / exportVideo.duration));
-            }
+            maybeUpdateProgress();
           }
           
           drawIntervalId = requestAnimationFrame(captureFrameRAF);
@@ -757,7 +894,7 @@ const Index = () => {
       toast.error("Failed to export video");
       setIsRecording(false);
     }
-  }, [cardData, exportFps, cardVersion]);
+  }, [cardData, exportFps, matchSourceFps, cardVersion]);
 
   return (
     <main className="min-h-screen bg-[hsl(var(--gmgn-bg-100))] py-8 px-4">
@@ -1094,6 +1231,21 @@ const Index = () => {
                     ))}
                   </div>
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="matchSourceFps" className="text-[hsl(var(--gmgn-text-200))]">
+                    Match source FPS
+                  </Label>
+                  <Switch
+                    id="matchSourceFps"
+                    checked={matchSourceFps}
+                    onCheckedChange={(checked) => setMatchSourceFps(checked)}
+                  />
+                </div>
+                <p className="text-xs text-[hsl(var(--gmgn-text-300))]">
+                  Helps avoid “micro-freezes” when the uploaded video isn’t truly {exportFps} FPS.
+                </p>
+
                 <div className="text-xs text-[rgb(134,217,159)] bg-[hsl(148_55%_69%/0.1)] px-3 py-2 rounded-lg">
                   Export at {exportFps} FPS (30 FPS most stable)
                 </div>
