@@ -104,173 +104,185 @@ const GmgnCard = forwardRef<HTMLDivElement, GmgnCardProps>(({ data, scale = 1, v
         />
       )}
 
-      {/* Content */}
-      <div className="relative z-10 h-full flex flex-col text-[hsl(var(--gmgn-text-100))] font-bold" style={{ fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-        {/* Header - height: 152px, px: 68px */}
+      {/* Content - using grid for overlay structure like original */}
+      <div className="absolute inset-0 z-10 grid text-[hsl(var(--gmgn-text-100))] font-bold" style={{ fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+        
+        {/* Header - absolute, height: 152px, px: 68px, z-1 */}
         <div 
-          className="flex justify-between items-center"
+          className="absolute top-0 left-0 right-0 flex flex-col justify-between z-[1]"
           style={{ 
             height: `${s(152)}px`,
             paddingLeft: `${s(68)}px`,
             paddingRight: `${s(68)}px`,
           }}
         >
-          <GmgnLogo style={{ height: `${s(72)}px`, width: 'auto' }} />
+          <div 
+            className="flex w-full items-center justify-between"
+            style={{ height: `${s(152)}px` }}
+          >
+            <GmgnLogo style={{ height: `${s(72)}px`, width: `${s(270)}px` }} />
 
-          <div className="flex items-center" style={{ gap: `${s(60)}px` }}>
-            <div className="flex items-center" style={{ gap: `${s(8)}px` }}>
-              <XIcon style={{ width: `${s(40)}px`, height: `${s(40)}px` }} />
-              <span className="font-normal" style={{ fontSize: `${s(32)}px` }}>{data.twitterHandle}</span>
-            </div>
-            <div className="flex items-center" style={{ gap: `${s(8)}px` }}>
-              <GlobeIcon style={{ width: `${s(40)}px`, height: `${s(40)}px` }} />
-              <span className="font-normal" style={{ fontSize: `${s(32)}px` }}>{data.websiteUrl}</span>
+            <div className="flex items-center" style={{ gap: `${s(60)}px` }}>
+              <div className="flex items-center" style={{ gap: `${s(8)}px`, width: `${s(170)}px` }}>
+                <XIcon style={{ width: `${s(40)}px`, height: `${s(40)}px` }} />
+                <span className="font-normal" style={{ fontSize: `${s(32)}px` }}>{data.twitterHandle}</span>
+              </div>
+              <div className="flex items-center" style={{ gap: `${s(8)}px`, width: `${s(170)}px` }}>
+                <GlobeIcon style={{ width: `${s(40)}px`, height: `${s(40)}px` }} />
+                <span className="font-normal" style={{ fontSize: `${s(32)}px` }}>{data.websiteUrl}</span>
+              </div>
             </div>
           </div>
+
+          {/* Divider - height: 0.5px */}
+          <div
+            className="w-full bg-[hsl(var(--gmgn-text-100)/0.5)]"
+            style={{ height: `${s(0.5)}px` }}
+          />
         </div>
 
-        {/* Divider - height: 0.5px, inside header px */}
-        <div
-          className="bg-[hsl(var(--gmgn-text-100)/0.5)]"
-          style={{
-            height: `${s(1)}px`,
-            marginLeft: `${s(68)}px`,
-            marginRight: `${s(68)}px`,
-          }}
-        />
+        {/* Main layout: left (flex-9) / right (flex-10) zones */}
+        <div className="col-start-1 row-start-1 w-full h-full flex overflow-hidden">
+          {/* Left zone - content */}
+          <div style={{ flex: '9 9 0%', height: '100%', position: 'relative' }}>
+            <div className="w-full h-full flex justify-end" style={{ paddingRight: `${s(60)}px` }}>
+              {/* Content column - pl:64, pt:212, pb:88, justify-end */}
+              <div 
+                className="w-full h-full relative flex flex-col justify-end"
+                style={{ 
+                  paddingLeft: `${s(64)}px`,
+                  paddingTop: `${s(212)}px`,
+                  paddingBottom: `${s(88)}px`,
+                }}
+              >
+                {version === 1 ? (
+                  <>
+                    {/* Version 1: Date Range + Profit Type */}
+                    <div className="flex flex-col" style={{ marginBottom: `${s(40)}px` }}>
+                      <div className="flex flex-col" style={{ fontSize: `${s(56)}px`, marginBottom: `${s(48)}px` }}>
+                        <span>{data.dateRange}</span>
+                        <span>{data.profitType}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Version 2: Period + Win Streak - mb:40px */}
+                    <div className="flex flex-col" style={{ marginBottom: `${s(40)}px` }}>
+                      {/* Period text block - fontSize:56, mb:48 */}
+                      <div className="flex flex-col" style={{ fontSize: `${s(56)}px`, marginBottom: `${s(48)}px` }}>
+                        <span>{data.month}</span>
+                        <span>
+                          <span className="text-[rgb(134,217,159)]" style={{ marginRight: `${s(8)}px` }}>{data.winStreak}Days</span>
+                          <span>Win Streak</span>
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
 
-        {/* Main Content - pl:64, pr:60, pt:212 from top (60px below header), pb:88 */}
-        <div 
-          className="flex-1 flex flex-col"
-          style={{ 
-            paddingLeft: `${s(64)}px`,
-            paddingRight: `${s(60)}px`,
-            paddingTop: `${s(60)}px`,  // 212 - 152 header height = 60px
-            paddingBottom: `${s(88)}px`,
-          }}
-        >
-          {version === 1 ? (
-            <>
-              {/* Version 1: Date Range */}
-              <p style={{ fontSize: `${s(56)}px`, marginBottom: `${s(16)}px`, lineHeight: 1 }}>{data.dateRange}</p>
-              {/* Version 1: Profit Type */}
-              <p style={{ fontSize: `${s(56)}px`, marginBottom: `${s(48)}px`, lineHeight: 1 }}>{data.profitType}</p>
-            </>
-          ) : (
-            <>
-              {/* Version 2: Month */}
-              <p style={{ fontSize: `${s(56)}px`, marginBottom: `${s(0)}px`, lineHeight: 1 }}>{data.month}</p>
-              {/* Version 2: Win Streak - number colored green, "Days" normal, then "Win Streak" */}
-              <p style={{ fontSize: `${s(56)}px`, marginBottom: `${s(48)}px`, lineHeight: 1 }}>
-                <span className="text-[rgb(134,217,159)]">{data.winStreak}</span>
-                <span className="text-[rgb(134,217,159)]">Days</span>
-                <span> Win Streak</span>
-              </p>
-            </>
-          )}
+                {/* PNL Value wrapper - pl:4px */}
+                <div style={{ paddingLeft: `${s(4)}px` }}>
+                  {(() => {
+                    const h = s(120);
+                    const fontSize = s(94);
+                    const px = s(20);
+                    const minW = s(500);
+                    const textWidth = fontSize * 0.62 * data.pnlValue.length;
+                    const w = Math.max(minW, textWidth + px * 2);
 
-          {/* PNL Value - height: 120px, min-width: 500px, px: 20px */}
-          <div style={{ marginBottom: `${s(40)}px` }}>
-            {(() => {
-              const h = s(120);
-              const fontSize = s(94);
-              const px = s(20);
-              const minW = s(500);
-              const textWidth = fontSize * 0.62 * data.pnlValue.length;
-              const w = Math.max(minW, textWidth + px * 2);
-
-              return (
-                <div
-                  className="relative overflow-hidden"
-                  style={{
-                    width: `${w}px`,
-                    height: `${h}px`,
-                    borderRadius: 0,
-                    backgroundColor: data.transparentPnlText ? "transparent" : pnlBgColor,
-                  }}
-                >
-                  {data.transparentPnlText ? (
-                    <svg
-                      width={w}
-                      height={h}
-                      viewBox={`0 0 ${w} ${h}`}
-                      preserveAspectRatio="none"
-                      style={{ position: "absolute", inset: 0 }}
-                    >
-                      <defs>
-                        <mask id="pnlMask" maskUnits="userSpaceOnUse">
-                          <rect x="0" y="0" width={w} height={h} fill="white" />
-                          <text
-                            x={px}
-                            y="50%"
-                            dy="0.35em"
-                            textAnchor="start"
-                            fill="black"
-                            style={{
-                              fontSize,
-                              fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                              fontWeight: 700,
-                              whiteSpace: "pre",
-                            }}
+                    return (
+                      <div
+                        className="flex items-center whitespace-nowrap"
+                        style={{
+                          width: 'fit-content',
+                          minWidth: `${minW}px`,
+                          height: `${h}px`,
+                          paddingLeft: `${px}px`,
+                          paddingRight: `${px}px`,
+                          fontSize: `${fontSize}px`,
+                          backgroundColor: data.transparentPnlText ? "transparent" : pnlBgColor,
+                        }}
+                      >
+                        {data.transparentPnlText ? (
+                          <svg
+                            width={w}
+                            height={h}
+                            viewBox={`0 0 ${w} ${h}`}
+                            preserveAspectRatio="none"
+                            style={{ position: "absolute", left: `${s(4)}px` }}
                           >
+                            <defs>
+                              <mask id="pnlMask" maskUnits="userSpaceOnUse">
+                                <rect x="0" y="0" width={w} height={h} fill="white" />
+                                <text
+                                  x={px}
+                                  y="50%"
+                                  dy="0.35em"
+                                  textAnchor="start"
+                                  fill="black"
+                                  style={{
+                                    fontSize,
+                                    fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {data.pnlValue}
+                                </text>
+                              </mask>
+                            </defs>
+                            <rect x="0" y="0" width={w} height={h} fill={pnlBgColor} mask="url(#pnlMask)" />
+                          </svg>
+                        ) : (
+                          <span style={{ color: "rgb(26,27,31)", fontWeight: 700 }}>
                             {data.pnlValue}
-                          </text>
-                        </mask>
-                      </defs>
-                      <rect x="0" y="0" width={w} height={h} fill={pnlBgColor} mask="url(#pnlMask)" />
-                    </svg>
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Breakdown stats - fontSize:40px base */}
+                <div className="flex flex-col" style={{ fontSize: `${s(40)}px`, marginTop: `${s(40)}px` }}>
+                  {version === 1 ? (
+                    /* Version 1: TXs Stats */
+                    <div className="flex items-center" style={{ gap: `${s(12)}px`, height: `${s(56)}px`, fontSize: `${s(42)}px` }}>
+                      <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>TXs</span>
+                      <div className="flex items-center">
+                        <span className="text-[rgb(134,217,159)]">{data.txWin}</span>
+                        <span className="text-[hsl(var(--gmgn-text-100))]">/</span>
+                        <span className="text-[rgb(242,102,130)]">{data.txLoss}</span>
+                      </div>
+                    </div>
                   ) : (
-                    <div
-                      className="flex h-full items-center justify-start"
-                      style={{
-                        fontSize,
-                        fontFamily: '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                        fontWeight: 700,
-                        paddingLeft: px,
-                        paddingRight: px,
-                        color: "rgb(26,27,31)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {data.pnlValue}
+                    /* Version 2: Profit, Loss, Profit Days - gap:24px */
+                    <div className="flex flex-col" style={{ gap: `${s(24)}px` }}>
+                      <div className="flex items-center" style={{ height: `${s(56)}px`, gap: `${s(12)}px`, fontSize: `${s(42)}px` }}>
+                        <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>Profit</span>
+                        <span className="text-[rgb(134,217,159)]">+${data.profitAmount}</span>
+                      </div>
+                      <div className="flex items-center" style={{ height: `${s(56)}px`, gap: `${s(12)}px`, fontSize: `${s(42)}px` }}>
+                        <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>Loss</span>
+                        <span className="text-[rgb(242,102,130)]">-${data.lossAmount}</span>
+                      </div>
+                      <div className="flex items-center" style={{ height: `${s(56)}px`, gap: `${s(12)}px`, fontSize: `${s(42)}px` }}>
+                        <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>Profit Days</span>
+                        <div className="flex items-center">
+                          <span className="text-[rgb(134,217,159)]">{data.profitDaysWin}</span>
+                          <span className="text-[hsl(var(--gmgn-text-100))]">/</span>
+                          <span className="text-[rgb(242,102,130)]">{data.profitDaysLoss}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
-              );
-            })()}
+              </div>
+            </div>
           </div>
 
-          {version === 1 ? (
-            /* Version 1: TXs Stats */
-            <div className="flex items-center" style={{ gap: `${s(12)}px`, fontSize: `${s(42)}px` }}>
-              <span className="text-[hsl(var(--gmgn-text-100)/0.5)]" style={{ minWidth: `${s(120)}px` }}>TXs</span>
-              <div className="flex items-center">
-                <span className="text-[rgb(134,217,159)]">{data.txWin}</span>
-                <span className="text-[hsl(var(--gmgn-text-300))]">/</span>
-                <span className="text-[rgb(242,102,130)]">{data.txLoss}</span>
-              </div>
-            </div>
-          ) : (
-            /* Version 2: Profit, Loss, Profit Days - labelWidth: 240px, rowHeight: 56px, gap: 24px */
-            <div className="flex flex-col" style={{ gap: `${s(24)}px`, fontSize: `${s(42)}px` }}>
-              <div className="flex items-center" style={{ height: `${s(56)}px` }}>
-                <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>Profit</span>
-                <span className="text-[rgb(134,217,159)]" style={{ marginLeft: `${s(12)}px` }}>+${data.profitAmount}</span>
-              </div>
-              <div className="flex items-center" style={{ height: `${s(56)}px` }}>
-                <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>Loss</span>
-                <span className="text-[rgb(242,102,130)]" style={{ marginLeft: `${s(12)}px` }}>-${data.lossAmount}</span>
-              </div>
-              <div className="flex items-center" style={{ height: `${s(56)}px` }}>
-                <span className="text-[hsl(var(--gmgn-text-100)/0.5)] font-normal" style={{ minWidth: `${s(240)}px` }}>Profit Days</span>
-                <div className="flex items-center" style={{ marginLeft: `${s(12)}px` }}>
-                  <span className="text-[rgb(134,217,159)]">{data.profitDaysWin}</span>
-                  <span className="text-[hsl(var(--gmgn-text-100))]">/</span>
-                  <span className="text-[rgb(242,102,130)]">{data.profitDaysLoss}</span>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Right zone - empty (flex-10) */}
+          <div style={{ flex: '10 10 0%', width: '100%', height: '100%' }} />
         </div>
 
         {/* Footer - absolute positioned: bottom: 28px, px: 68px */}
